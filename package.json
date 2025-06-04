@@ -1,6 +1,6 @@
 {
   "name": "puty",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A tooling function to test javascript functions and classes.",
   "main": "src/index.js",
   "type": "module",
@@ -19,5 +19,8 @@
     "lint": "bunx prettier src tests -c",
     "lint:fix": "bunx prettier src tests -w",
     "build": "bun run esbuild.js"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.1"
   }
 }

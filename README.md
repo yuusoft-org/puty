@@ -26,6 +26,8 @@ It should run all the tests in the file.
 
 ## Usage
 
+### Testing Functions
+
 ```yaml
 file: './math.js'
 group: math
@@ -60,4 +62,61 @@ case: increment 2
 in:
   - 2
 out: 3
+```
+
+### Testing Classes
+
+Puty also supports testing classes with method calls and state assertions:
+
+```yaml
+file: './calculator.js'
+group: Calculator
+suites: [basic-operations]
+---
+suite: basic-operations
+mode: 'class'
+exportName: default
+constructorArgs: [10]  # Initial value
+---
+case: add and multiply operations
+executions:
+  - method: add
+    in: [5]
+    out: 15
+    asserts:
+      - property: value
+        op: eq
+        value: 15
+  - method: multiply
+    in: [2]
+    out: 30
+    asserts:
+      - property: value
+        op: eq
+        value: 30
+      - method: getValue
+        in: []
+        out: 30
+```
+
+#### Class Test Structure
+
+- `mode: 'class'` - Indicates this suite tests a class
+- `constructorArgs` - Arguments passed to the class constructor
+- `executions` - Array of method calls to execute in sequence
+  - `method` - Name of the method to call
+  - `in` - Arguments to pass to the method
+  - `out` - Expected return value (optional)
+  - `asserts` - Assertions to run after the method call
+    - Property assertions: Check instance properties
+    - Method assertions: Call methods and check their return values
+
+### Error Testing
+
+You can test that functions or methods throw expected errors:
+
+```yaml
+case: divide by zero
+in: [10, 0]
+throws: "Division by zero"
 ```

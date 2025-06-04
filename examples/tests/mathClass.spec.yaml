@@ -1,0 +1,60 @@
+file: '../mathClass.js'
+group: mathClass
+suites: [increment1, increment2]
+---
+suite: increment1
+mode: 'class'
+exportName: default
+constructorArgs:
+  - 1
+---
+case: increment multiple times with assertions
+executions:
+  - method: increment
+    in: [2]
+    out: 3
+    asserts:
+      - property: count
+        op: eq
+        value: 3
+      - method: getDoubleCount
+        in: []
+        out: 6
+  - method: increment
+    in: [5]
+    out: 8
+    asserts:
+      - property: count
+        op: eq
+        value: 8
+      - method: getDoubleCount
+        in: []
+        out: 16
+---
+case: single increment
+executions:
+  - method: increment
+    in: [10]
+    out: 11
+    asserts:
+      - property: count
+        op: eq
+        value: 11
+---
+suite: increment2
+mode: 'class'
+exportName: default
+constructorArgs: []
+---
+case: start from zero
+executions:
+  - method: increment
+    in: [1]
+    out: 1
+    asserts:
+      - property: count
+        op: eq
+        value: 1
+      - method: getDoubleCount
+        in: []
+        out: 2
