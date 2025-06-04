@@ -36,12 +36,27 @@ export const parseYamlDocuments = (yamlContent) => {
         exportName: doc.exportName || doc.suite,
         cases: [],
       };
+      // Only add mode and constructorArgs if mode is explicitly 'class'
+      if (doc.mode === "class") {
+        currentSuite.mode = "class";
+        currentSuite.constructorArgs = doc.constructorArgs || [];
+      }
     } else if (doc.case && currentSuite) {
-      currentSuite.cases.push({
+      const testCase = {
         name: doc.case,
-        in: doc.in || [],
-        out: doc.out,
-      });
+      };
+
+      if (currentSuite.mode === "class") {
+        testCase.executions = doc.executions || [];
+      } else {
+        testCase.in = doc.in || [];
+        testCase.out = doc.out;
+        if (doc.throws) {
+          testCase.throws = doc.throws;
+        }
+      }
+
+      currentSuite.cases.push(testCase);
     }
   }
 
@@ -64,26 +79,109 @@ const setupTestSuite = (testConfig) => {
   describe(group, () => {
     for (const suite of suites) {
       describe(suite.name, () => {
-        const { cases } = suite;
-        for (const testCase of cases) {
-          const {
-            name,
-            in: inArg,
-            out: expectedOut,
-            functionUnderTest,
-          } = testCase;
-          test(name, () => {
-            const out = functionUnderTest(...(inArg || []));
-            if (out instanceof Error) {
-              expect(out.message).toEqual(out.message);
-            } else {
-              expect(out).toEqual(expectedOut);
-            }
-          });
+        const { cases, mode } = suite;
+
+        if (mode === "class") {
+          setupClassTests(suite);
+        } else {
+          setupFunctionTests(suite);
         }
       });
     }
   });
+};
+
+const setupFunctionTests = (suite) => {
+  const { cases } = suite;
+  for (const testCase of cases) {
+    const {
+      name,
+      in: inArg,
+      out: expectedOut,
+      functionUnderTest,
+      throws,
+    } = testCase;
+    test(name, () => {
+      if (!functionUnderTest) {
+        throw new Error(`Function not found for test case: ${name}`);
+      }
+
+      if (throws) {
+        // Test expects an error to be thrown
+        expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
+      } else {
+        const out = functionUnderTest(...(inArg || []));
+        expect(out).toEqual(expectedOut);
+      }
+    });
+  }
+};
+
+const setupClassTests = (suite) => {
+  const { cases, ClassUnderTest, constructorArgs } = suite;
+  for (const testCase of cases) {
+    const { name, executions } = testCase;
+    test(name, () => {
+      if (!ClassUnderTest) {
+        throw new Error(`Class not found for test suite: ${suite.name}`);
+      }
+
+      const instance = new ClassUnderTest(...constructorArgs);
+
+      for (const execution of executions) {
+        const {
+          method,
+          in: inArg,
+          out: expectedOut,
+          throws,
+          asserts,
+        } = execution;
+
+        // Validate method exists
+        if (!instance[method] || typeof instance[method] !== "function") {
+          throw new Error(`Method '${method}' not found on class instance`);
+        }
+
+        // Execute the method and check its return value
+        if (throws) {
+          expect(() => instance[method](...(inArg || []))).toThrow(throws);
+        } else {
+          const result = instance[method](...(inArg || []));
+          if (expectedOut !== undefined) {
+            expect(result).toEqual(expectedOut);
+          }
+        }
+
+        // Run assertions
+        if (asserts) {
+          for (const assertion of asserts) {
+            if (assertion.property) {
+              // Property assertion
+              const actualValue = instance[assertion.property];
+              if (assertion.op === "eq") {
+                expect(actualValue).toEqual(assertion.value);
+              }
+              // Add more operators as needed
+            } else if (assertion.method) {
+              // Method assertion
+              if (
+                !instance[assertion.method] ||
+                typeof instance[assertion.method] !== "function"
+              ) {
+                throw new Error(
+                  `Method '${assertion.method}' not found on class instance for assertion`,
+                );
+              }
+              const result = instance[assertion.method](
+                ...(assertion.in || []),
+              );
+              expect(result).toEqual(assertion.out);
+            }
+          }
+        }
+      }
+    });
+  }
 };
 
 /**
@@ -97,11 +195,27 @@ export const injectFunctions = (module, originalTestConfig) => {
   let functionUnderTest = module[testConfig.exportName || "default"];
 
   for (const suite of testConfig.suites) {
-    if (suite.exportName) {
-      functionUnderTest = module[suite.exportName];
-    }
-    for (const testCase of suite.cases) {
-      testCase.functionUnderTest = functionUnderTest;
+    if (suite.mode === "class") {
+      const exportName = suite.exportName || "default";
+      const exported = module[exportName];
+      if (!exported) {
+        throw new Error(
+          `Export '${exportName}' not found in module for class suite '${suite.name}'`,
+        );
+      }
+      suite.ClassUnderTest = exported;
+    } else {
+      if (suite.exportName) {
+        functionUnderTest = module[suite.exportName];
+        if (!functionUnderTest) {
+          throw new Error(
+            `Export '${suite.exportName}' not found in module for suite '${suite.name}'`,
+          );
+        }
+      }
+      for (const testCase of suite.cases) {
+        testCase.functionUnderTest = functionUnderTest;
+      }
     }
   }
   return testConfig;

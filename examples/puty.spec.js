@@ -1,7 +1,4 @@
+import { setupTestSuiteFromYaml } from "../src/puty.js";
 
-import path from 'path'
-import { setupTestSuiteFromYaml } from '../src/puty'
-
-const __dirname = path.dirname(new URL(import.meta.url).pathname)
-
-await setupTestSuiteFromYaml(__dirname);
+// This will discover and run all .spec.yaml files in the examples directory
+await setupTestSuiteFromYaml("./examples");
