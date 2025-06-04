@@ -19,5 +19,8 @@
     "lint": "bunx prettier src tests -c",
     "lint:fix": "bunx prettier src tests -w",
     "build": "bun run esbuild.js"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.1"
   }
 }
