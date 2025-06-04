@@ -1,0 +1,23 @@
+{
+  "name": "puty",
+  "version": "0.0.1",
+  "description": "A tooling function to test javascript functions and classes.",
+  "main": "src/index.js",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuusoft-org/puty.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "js-yaml": "~4.1.0"
+  },
+  "scripts": {
+    "lint": "bunx prettier src tests -c",
+    "lint:fix": "bunx prettier src tests -w",
+    "build": "bun run esbuild.js"
+  }
+}

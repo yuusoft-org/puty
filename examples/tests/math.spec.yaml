@@ -1,0 +1,33 @@
+file: '../math.js'
+group: math
+suites: [add, increment]
+---
+### Add
+suite: add
+exportName: add
+---
+case: add 1 and 2
+in:
+  - 1
+  - 2
+out: 3
+---
+case: add 2 and 2
+in:
+  - 2
+  - 2
+out: 4
+---
+### Increment
+suite: increment
+exportName: default
+---
+case: increment 1
+in:
+  - 1
+out: 2
+---
+case: increment 2
+in:
+  - 2
+out: 3
