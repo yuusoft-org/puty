@@ -1,0 +1,11 @@
+case: add 1 and 2 via include
+in:
+  - 1
+  - 2
+out: 3
+---
+case: add 5 and 7 via include
+in:
+  - 5
+  - 7
+out: 12

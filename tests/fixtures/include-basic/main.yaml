@@ -1,0 +1,7 @@
+file: "./math.js"
+group: math-include
+suites: [add]
+---
+!include ./suite-def.yaml
+---
+!include ./test-cases.yaml

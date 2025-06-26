@@ -1,0 +1,8 @@
+file: "./simple.js"
+group: values-test
+---
+suite: test
+---
+case: test with included values
+in: !include ./data/input.yaml
+out: !include ./data/output.yaml

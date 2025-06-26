@@ -1,0 +1,7 @@
+case: add 1 and 2
+in: [1, 2]
+out: 3
+---
+case: add 5 and 7
+in: [5, 7]
+out: 12

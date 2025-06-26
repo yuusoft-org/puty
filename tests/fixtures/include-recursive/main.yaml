@@ -1,0 +1,4 @@
+file: "./lib.js"
+group: recursive-test
+---
+!include ./level1.yaml

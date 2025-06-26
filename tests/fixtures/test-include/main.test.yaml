@@ -1,0 +1,16 @@
+file: "../examples/math.js"
+group: math-include-test
+suites: [add, increment]
+---
+!include ./add-suite.yaml
+---
+!include ./add-cases.yaml
+---
+### Increment
+suite: increment
+exportName: default
+---
+case: increment with include
+in:
+  - !include ./test-data/input.yaml
+out: !include ./test-data/output.yaml
