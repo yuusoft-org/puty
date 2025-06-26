@@ -1,6 +1,6 @@
 {
   "name": "puty",
-  "version": "0.0.3",
+  "version": "0.0.4-rc1",
   "description": "A tooling function to test javascript functions and classes.",
   "main": "src/index.js",
   "type": "module",
@@ -16,6 +16,8 @@
     "js-yaml": "~4.1.0"
   },
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest run",
     "lint": "bunx prettier src tests -c",
     "lint:fix": "bunx prettier src tests -w",
     "build": "bun run esbuild.js"
