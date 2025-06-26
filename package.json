@@ -1,6 +1,6 @@
 {
   "name": "puty",
-  "version": "0.0.2",
+  "version": "0.0.3-rc1",
   "description": "A tooling function to test javascript functions and classes.",
   "main": "src/index.js",
   "type": "module",

@@ -1,9 +1,11 @@
 import path from "node:path";
-import fs from "node:fs";
 import yaml from "js-yaml";
 import { expect, test, describe } from "vitest";
 
-import { traverseAllFiles } from "./utils.js";
+import {
+  traverseAllFiles,
+  parseYamlDocumentsWithIncludes as parseWithIncludes,
+} from "./utils.js";
 
 const extensions = [".test.yaml", ".test.yml", ".spec.yaml", ".spec.yml"];
 
@@ -227,8 +229,7 @@ export const injectFunctions = (module, originalTestConfig) => {
 export const setupTestSuiteFromYaml = async (dirname) => {
   const testYamlFiles = traverseAllFiles(dirname, extensions);
   for (const file of testYamlFiles) {
-    const yamlContent = fs.readFileSync(file, "utf8");
-    const testConfig = parseYamlDocuments(yamlContent);
+    const testConfig = parseWithIncludes(file);
     const filepathRelativeToSpecFile = path.join(
       path.dirname(file),
       testConfig.file,
