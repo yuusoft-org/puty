@@ -3,10 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import {
-  loadYamlWithPath,
-  parseYamlDocumentsWithIncludes,
-} from "../src/utils.js";
+import { loadYamlWithPath, parseWithIncludes } from "../src/utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -192,10 +189,10 @@ describe("loadYamlWithPath", () => {
   });
 });
 
-describe("parseYamlDocumentsWithIncludes", () => {
+describe("parseWithIncludes", () => {
   test("should parse multi-document YAML with includes into test config", () => {
     const filePath = path.join(__dirname, "fixtures/include-basic/main.yaml");
-    const result = parseYamlDocumentsWithIncludes(filePath);
+    const result = parseWithIncludes(filePath);
 
     expect(result).toEqual({
       file: "./math.js",
@@ -224,7 +221,7 @@ describe("parseYamlDocumentsWithIncludes", () => {
 
   test("should parse YAML with included values", () => {
     const filePath = path.join(__dirname, "fixtures/include-values/main.yaml");
-    const result = parseYamlDocumentsWithIncludes(filePath);
+    const result = parseWithIncludes(filePath);
 
     expect(result).toEqual({
       file: "./simple.js",
@@ -250,7 +247,7 @@ describe("parseYamlDocumentsWithIncludes", () => {
       __dirname,
       "fixtures/include-recursive/main.yaml",
     );
-    const result = parseYamlDocumentsWithIncludes(filePath);
+    const result = parseWithIncludes(filePath);
 
     expect(result).toEqual({
       file: "./lib.js",
@@ -275,7 +272,7 @@ describe("parseYamlDocumentsWithIncludes", () => {
     const filePath = path.join(__dirname, "fixtures/test-circular/a.yaml");
 
     expect(() => {
-      parseYamlDocumentsWithIncludes(filePath);
+      parseWithIncludes(filePath);
     }).toThrow(/Circular dependency detected/);
   });
 });

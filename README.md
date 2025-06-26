@@ -1,6 +1,27 @@
-# Puty: Pure Unit Test in Yaml
+# Puty: Pure Unit Test in YAML
 
-Write unit test specifications using YAML files, powered by vitest as the test runner.
+Puty is a declarative testing framework that allows you to write unit tests using YAML files instead of JavaScript code. It's built on top of [Vitest](https://vitest.dev/) and designed to make testing more accessible and maintainable by separating test data from test logic.
+
+Puty is ideal for testing pure functions - functions that always return the same output for the same input and have no side effects. The declarative YAML format perfectly captures the essence of pure function testing: given these inputs, expect this output.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+  - [Testing Functions](#testing-functions)
+  - [Testing Classes](#testing-classes)
+  - [Error Testing](#error-testing)
+  - [Using !include Directive](#using-include-directive)
+- [YAML Structure](#yaml-structure)
+
+## Features
+
+- 📝 Write tests in simple YAML format
+- 📦 Modular test organization with `!include` directive
+- 🎯 Clear separation of test data and test logic
+- ⚡ Powered by Vitest for fast test execution
 
 ## Installation
 
@@ -8,25 +29,70 @@ Write unit test specifications using YAML files, powered by vitest as the test r
 npm install puty
 ```
 
-create a file in your project `puty.test.js`
+## Quick Start
+
+
+1. Create a test runner file `puty.test.js` in your project:
+
 ```js
-import { setupTestSuiteFromYaml } from "./puty.js";
+import { setupTestSuiteFromYaml } from "puty";
+
+// Search for test files in the current directory
 await setupTestSuiteFromYaml();
+
+// Or specify a different directory
+// await setupTestSuiteFromYaml("./tests");
 ```
 
-This function will read for all `.spec.yaml` and `.test.yaml` files in the current directory and run the tests.
+**Note:** Puty uses ES module imports and requires your project to support ES modules. If you're using Node.js, make sure to add `"type": "module"` to your `package.json` or use `.mjs` file extensions.
 
-run
 
+2. Create your first test file `math.test.yaml`:
+
+```yaml
+file: './math.js'
+group: math
+suites: [add]
+---
+suite: add
+exportName: add
+---
+case: add two numbers
+in: [2, 3]
+out: 5
 ```
-vitest
+
+3. Run your tests:
+
+```bash
+npx vitest
 ```
 
-It should run all the tests in the file.
+### Recommended Vitest Configuration
+
+To enable automatic test reruns when YAML test files change, create a `vitest.config.js` file in your project root:
+
+```js
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    forceRerunTriggers: [
+      '**/*.js',
+      '**/*.{test,spec}.yaml',
+      '**/*.{test,spec}.yml'
+    ],
+  },
+});
+```
+
+This configuration ensures that Vitest will re-run your tests whenever you modify either your JavaScript source files or your YAML test files.
 
 ## Usage
 
 ### Testing Functions
+
+Here's a complete example of testing JavaScript functions with Puty:
 
 ```yaml
 file: './math.js'
@@ -63,6 +129,22 @@ in:
   - 2
 out: 3
 ```
+
+This under the hood creates a test structure in Vitest like:
+```js
+describe('math', () => {
+  describe('add', () => {
+    it('add 1 and 2', () => { ... })
+    it('add 2 and 2', () => { ... })
+  })
+  describe('increment', () => {
+    it('increment 1', () => { ... })
+    it('increment 2', () => { ... })
+  })
+})
+```
+
+See the [YAML Structure](#yaml-structure) section for detailed documentation of all available fields.
 
 ### Testing Classes
 
@@ -120,3 +202,110 @@ case: divide by zero
 in: [10, 0]
 throws: "Division by zero"
 ```
+
+### Using !include Directive
+
+Puty supports the `!include` directive to modularize and reuse YAML test files. This is useful for:
+- Sharing common test data across multiple test files
+- Organizing large test suites into smaller, manageable files
+- Reusing test cases for different modules
+
+#### Basic Usage
+
+You can include entire YAML documents:
+
+```yaml
+file: "./math.js"
+group: math-tests
+suites: [add]
+---
+!include ./suite-definition.yaml
+---
+!include ./test-cases.yaml
+```
+
+#### Including Values
+
+You can also include specific values within a YAML document:
+
+```yaml
+case: test with shared data
+in: !include ./test-data/input.yaml
+out: !include ./test-data/expected-output.yaml
+```
+
+#### Recursive Includes
+
+The `!include` directive supports recursive includes, allowing included files to include other files:
+
+```yaml
+# main.yaml
+!include ./level1.yaml
+
+# level1.yaml
+suite: test
+---
+!include ./level2.yaml
+
+# level2.yaml
+case: nested test
+in: []
+out: "success"
+```
+
+#### Important Notes
+
+- File paths in `!include` are relative to the YAML file containing the directive
+- Circular dependencies are detected and will cause an error
+- Missing include files will result in a clear error message
+- Both single documents and multi-document YAML files can be included
+
+
+## YAML Structure
+
+Puty test files use multi-document YAML format with three types of documents:
+
+### 1. Configuration Document (First document)
+
+```yaml
+file: './module.js'        # Required: Path to JS file (relative to YAML file)
+group: 'test-group'        # Required: Test group name (or use 'name')
+suites: ['suite1', 'suite2'] # Optional: List of suites to define
+```
+
+### 2. Suite Definition Documents
+
+```yaml
+suite: 'suiteName'         # Required: Suite name
+exportName: 'functionName' # Optional: Export to test (defaults to suite name or 'default')
+mode: 'class'              # Optional: Set to 'class' for class testing
+constructorArgs: [arg1]    # Optional: Arguments for class constructor (class mode only)
+```
+
+### 3. Test Case Documents
+
+For function tests:
+```yaml
+case: 'test description'   # Required: Test case name
+in: [arg1, arg2]          # Required: Input arguments
+out: expectedValue        # Optional: Expected output (omit if testing for errors)
+throws: 'Error message'   # Optional: Expected error message
+```
+
+For class tests:
+```yaml
+case: 'test description'
+executions:
+  - method: 'methodName'
+    in: [arg1]
+    out: expectedValue    # Optional
+    throws: 'Error msg'   # Optional
+    asserts:
+      - property: 'prop'
+        op: 'eq'          # Currently only 'eq' is supported
+        value: expected
+      - method: 'getter'
+        in: []
+        out: expected
+```
+
