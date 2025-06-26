@@ -1,16 +1,42 @@
+/**
+ * @fileoverview Main test framework functionality for YAML-driven testing
+ * This module provides functions for setting up test suites from YAML configurations,
+ * injecting functions/classes from modules, and executing tests using vitest.
+ */
+
 import path from "node:path";
 import yaml from "js-yaml";
 import { expect, test, describe } from "vitest";
 
-import {
-  traverseAllFiles,
-  parseYamlDocumentsWithIncludes as parseWithIncludes,
-} from "./utils.js";
+import { traverseAllFiles, parseWithIncludes } from "./utils.js";
 
+/**
+ * File extensions that are recognized as YAML test files
+ * @type {string[]}
+ */
 const extensions = [".test.yaml", ".test.yml", ".spec.yaml", ".spec.yml"];
 
 /**
- * Parse YAML content with document separators into structured test config
+ * Parses YAML content containing multiple documents separated by '---' into a structured test configuration
+ * @param {string} yamlContent - Raw YAML content string to parse
+ * @returns {Object} Structured test configuration object
+ * @returns {string|null} returns.file - Path to the JavaScript file being tested
+ * @returns {string|null} returns.group - Test group name  
+ * @returns {string[]} [returns.suiteNames] - Array of suite names defined in config
+ * @returns {Object[]} returns.suites - Array of test suite objects
+ * @example
+ * const yamlContent = `
+ * file: './math.js'
+ * group: math
+ * ---
+ * suite: add
+ * exportName: add
+ * ---
+ * case: add 1 and 2
+ * in: [1, 2]
+ * out: 3
+ * `;
+ * const config = parseYamlDocuments(yamlContent);
  */
 export const parseYamlDocuments = (yamlContent) => {
   const docs = yaml.loadAll(yamlContent);
@@ -70,8 +96,19 @@ export const parseYamlDocuments = (yamlContent) => {
 };
 
 /**
- *
- * @param {*} testConfig
+ * Sets up and registers test suites with the testing framework (vitest)
+ * @param {Object} testConfig - Test configuration object containing suites and cases
+ * @param {string} testConfig.group - Name of the test group (used as describe block name)
+ * @param {Object[]} testConfig.suites - Array of test suite objects
+ * @param {boolean} [testConfig.skip] - Whether to skip this entire test suite
+ * @example
+ * setupTestSuite({
+ *   group: 'math',
+ *   suites: [{
+ *     name: 'add',
+ *     cases: [{ name: 'add 1+2', functionUnderTest: addFn, in: [1,2], out: 3 }]
+ *   }]
+ * });
  */
 const setupTestSuite = (testConfig) => {
   const { group, suites, skip } = testConfig;
@@ -93,6 +130,16 @@ const setupTestSuite = (testConfig) => {
   });
 };
 
+/**
+ * Sets up individual test cases for function-based testing
+ * @param {Object} suite - Test suite configuration
+ * @param {Object[]} suite.cases - Array of test case objects
+ * @param {string} suite.cases[].name - Test case name
+ * @param {any[]} suite.cases[].in - Input arguments for the function
+ * @param {any} suite.cases[].out - Expected output value
+ * @param {Function} suite.cases[].functionUnderTest - The function to test
+ * @param {string|RegExp} [suite.cases[].throws] - Expected error message/pattern if function should throw
+ */
 const setupFunctionTests = (suite) => {
   const { cases } = suite;
   for (const testCase of cases) {
@@ -119,6 +166,15 @@ const setupFunctionTests = (suite) => {
   }
 };
 
+/**
+ * Sets up individual test cases for class-based testing
+ * @param {Object} suite - Test suite configuration for class testing
+ * @param {Object[]} suite.cases - Array of test case objects
+ * @param {string} suite.cases[].name - Test case name  
+ * @param {Object[]} suite.cases[].executions - Array of method executions to perform
+ * @param {Function} suite.ClassUnderTest - The class constructor to test
+ * @param {any[]} suite.constructorArgs - Arguments to pass to class constructor
+ */
 const setupClassTests = (suite) => {
   const { cases, ClassUnderTest, constructorArgs } = suite;
   for (const testCase of cases) {
@@ -187,10 +243,19 @@ const setupClassTests = (suite) => {
 };
 
 /**
- *
- * @param {*} module
- * @param {*} originalTestConfig
- * @returns
+ * Injects functions and classes from an imported module into test configuration objects
+ * @param {Object} module - The imported JavaScript module containing functions/classes to test
+ * @param {Object} originalTestConfig - Original test configuration object
+ * @returns {Object} Test configuration with injected functions/classes ready for testing
+ * @throws {Error} When required exports are not found in the module
+ * @example
+ * // Import module and inject functions
+ * const module = await import('./math.js');
+ * const testConfig = { 
+ *   suites: [{ name: 'add', exportName: 'add', cases: [...] }] 
+ * };
+ * const ready = injectFunctions(module, testConfig);
+ * // ready.suites[0].cases[0].functionUnderTest === module.add
  */
 export const injectFunctions = (module, originalTestConfig) => {
   const testConfig = structuredClone(originalTestConfig);
@@ -224,7 +289,18 @@ export const injectFunctions = (module, originalTestConfig) => {
 };
 
 /**
- * Setup test suites from all yaml files in the current directory and its subdirectories
+ * Discovers and sets up test suites from all YAML test files in a directory and its subdirectories
+ * @param {string} dirname - Directory path to search for YAML test files
+ * @returns {Promise<void>} Promise that resolves when all test suites are set up
+ * @throws {Error} When YAML files cannot be parsed or modules cannot be imported
+ * @example
+ * // Set up all test suites from YAML files in the current directory
+ * await setupTestSuiteFromYaml('.');
+ * 
+ * // Set up tests from a specific directory
+ * await setupTestSuiteFromYaml('./tests');
+ * 
+ * // This will find all files matching: *.test.yaml, *.test.yml, *.spec.yaml, *.spec.yml
  */
 export const setupTestSuiteFromYaml = async (dirname) => {
   const testYamlFiles = traverseAllFiles(dirname, extensions);
