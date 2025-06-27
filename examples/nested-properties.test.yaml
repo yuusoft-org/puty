@@ -1,0 +1,81 @@
+file: './nested-properties.js'
+group: nested-properties-tests
+---
+suite: UserManager
+exportName: UserManager
+mode: class
+constructorArgs: []
+---
+case: test nested property access
+executions:
+  - method: updateUserName
+    in: ['Jane Smith']
+    out: 'Jane Smith'
+    asserts:
+      # Test nested property access
+      - property: 'user.profile.name'
+        op: eq
+        value: 'Jane Smith'
+      - property: 'user.profile.age'
+        op: eq
+        value: 30
+      - property: 'user.profile.preferences.theme'
+        op: eq
+        value: 'dark'
+      - property: 'user.account.type'
+        op: eq
+        value: 'premium'
+---
+case: test nested method calls
+executions:
+  - method: upgradeAccount
+    out:
+      id: 12345
+      type: 'premium+'
+      balance: 150.50
+    asserts:
+      # Test nested method calls
+      - method: 'settings.ui.getTheme'
+        in: []
+        out: 'dark'
+      - method: 'settings.account.getBalance'
+        in: []
+        out: 150.50
+      - method: 'api.client.get'
+        in: ['/users/12345']
+        out: 'GET /users/12345'
+      - method: 'api.auth.login'
+        in: ['jane', 'password123']
+        out: 'Logged in jane'
+---
+case: test deep nested properties and methods
+executions:
+  - method: settings.ui.setTheme
+    in: ['light']
+    out: 'light'
+    asserts:
+      - property: 'user.profile.preferences.theme'
+        op: eq
+        value: 'light'
+      - property: 'user.profile.preferences.language'
+        op: eq
+        value: 'en'
+      - method: 'settings.ui.getTheme'
+        in: []
+        out: 'light'
+---
+case: test nested method with balance operations
+executions:
+  - method: settings.account.addBalance
+    in: [25.75]
+    out: 126.25
+    asserts:
+      - property: 'user.account.balance'
+        op: eq
+        value: 126.25
+      - method: 'settings.account.getBalance'
+        in: []
+        out: 126.25
+      - method: 'api.client.post'
+        in: ['/transactions', { amount: 25.75 }]
+        out: 'POST /transactions with {"amount":25.75}'

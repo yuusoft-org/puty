@@ -12,6 +12,70 @@ import { traverseAllFiles, parseWithIncludes } from "./utils.js";
 import { resolveMocks, processMockReferences, createMockFunctions, validateMockCalls } from "./mockResolver.js";
 
 /**
+ * Resolves a nested property path on an object (e.g., "user.profile.name")
+ * @param {Object} obj - The object to traverse
+ * @param {string} path - The property path (e.g., "user.profile.name")
+ * @returns {any} The value at the path
+ * @throws {Error} If any part of the path doesn't exist
+ */
+const getNestedProperty = (obj, path) => {
+  const parts = path.split('.');
+  let current = obj;
+  
+  for (let i = 0; i < parts.length; i++) {
+    if (current == null) {
+      throw new Error(`Cannot access property '${parts[i]}' of ${current} in path '${path}'`);
+    }
+    if (!(parts[i] in current)) {
+      throw new Error(`Property '${parts[i]}' not found in path '${path}'`);
+    }
+    current = current[parts[i]];
+  }
+  
+  return current;
+};
+
+/**
+ * Resolves a nested method path and calls it (e.g., "user.api.getData")
+ * @param {Object} obj - The object to traverse
+ * @param {string} path - The method path (e.g., "user.api.getData")
+ * @param {Array} args - Arguments to pass to the method
+ * @returns {any} The result of the method call
+ * @throws {Error} If any part of the path doesn't exist or final part is not a function
+ */
+const callNestedMethod = (obj, path, args = []) => {
+  const parts = path.split('.');
+  const methodName = parts.pop();
+  
+  let current = obj;
+  const parentPath = parts.join('.');
+  
+  // Navigate to the parent object
+  for (const part of parts) {
+    if (current == null) {
+      throw new Error(`Cannot access property '${part}' of ${current} in path '${path}'`);
+    }
+    if (!(part in current)) {
+      throw new Error(`Property '${part}' not found in path '${path}'`);
+    }
+    current = current[part];
+  }
+  
+  // Check if the method exists and is a function
+  if (current == null) {
+    throw new Error(`Cannot access method '${methodName}' of ${current} in path '${path}'`);
+  }
+  if (!(methodName in current)) {
+    throw new Error(`Method '${methodName}' not found in path '${path}'`);
+  }
+  if (typeof current[methodName] !== 'function') {
+    throw new Error(`'${methodName}' is not a function in path '${path}'`);
+  }
+  
+  return current[methodName](...args);
+};
+
+/**
  * File extensions that are recognized as YAML test files
  * @type {string[]}
  */
@@ -215,16 +279,11 @@ const setupClassTests = (suite) => {
             asserts,
           } = execution;
 
-          // Validate method exists
-          if (!instance[method] || typeof instance[method] !== "function") {
-            throw new Error(`Method '${method}' not found on class instance`);
-          }
-
-          // Execute the method and check its return value
+          // Execute the method and check its return value - supports nested methods
           if (throws) {
-            expect(() => instance[method](...(inArg || []))).toThrow(throws);
+            expect(() => callNestedMethod(instance, method, inArg || [])).toThrow(throws);
           } else {
-            const result = instance[method](...(inArg || []));
+            const result = callNestedMethod(instance, method, inArg || []);
             if (expectedOut !== undefined) {
               expect(result).toEqual(expectedOut);
             }
@@ -234,25 +293,15 @@ const setupClassTests = (suite) => {
           if (asserts) {
             for (const assertion of asserts) {
               if (assertion.property) {
-                // Property assertion
-                const actualValue = instance[assertion.property];
+                // Property assertion - supports nested properties like "user.profile.name"
+                const actualValue = getNestedProperty(instance, assertion.property);
                 if (assertion.op === "eq") {
                   expect(actualValue).toEqual(assertion.value);
                 }
                 // Add more operators as needed
               } else if (assertion.method) {
-                // Method assertion
-                if (
-                  !instance[assertion.method] ||
-                  typeof instance[assertion.method] !== "function"
-                ) {
-                  throw new Error(
-                    `Method '${assertion.method}' not found on class instance for assertion`,
-                  );
-                }
-                const result = instance[assertion.method](
-                  ...(assertion.in || []),
-                );
+                // Method assertion - supports nested methods like "user.api.getData"
+                const result = callNestedMethod(instance, assertion.method, assertion.in || []);
                 expect(result).toEqual(assertion.out);
               }
             }
