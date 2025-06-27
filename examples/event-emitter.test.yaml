@@ -1,0 +1,134 @@
+file: './event-emitter.js'
+group: event-emitter-tests
+---
+suite: EventEmitter
+exportName: EventEmitter
+mode: class
+constructorArgs: []
+---
+case: test doSomething with event callbacks
+executions:
+  - method: on
+    in: ['start', $mock:startCallback]
+  - method: on
+    in: ['finish', $mock:finishCallback]
+  - method: doSomething
+    out: 'completed'
+mocks:
+  startCallback:
+    calls:
+      - in: ['processing']
+  finishCallback:
+    calls:
+      - in: ['completed', 42]
+---
+case: test processData with before/after callbacks
+executions:
+  - method: on
+    in: ['beforeProcess', $mock:beforeCallback]
+  - method: on
+    in: ['afterProcess', $mock:afterCallback]
+  - method: processData
+    in: ['hello']
+    out: 'HELLO'
+mocks:
+  beforeCallback:
+    calls:
+      - in: ['hello']
+  afterCallback:
+    calls:
+      - in: ['HELLO']
+---
+case: test multiple listeners for same event
+executions:
+  - method: on
+    in: ['start', $mock:listener1]
+  - method: on
+    in: ['start', $mock:listener2]
+  - method: doSomething
+    out: 'completed'
+mocks:
+  listener1:
+    calls:
+      - in: ['processing']
+  listener2:
+    calls:
+      - in: ['processing']
+---
+case: test same mock used for multiple events
+executions:
+  - method: on
+    in: ['start', $mock:sharedCallback]
+  - method: on
+    in: ['finish', $mock:sharedCallback]
+  - method: doSomething
+    out: 'completed'
+mocks:
+  sharedCallback:
+    calls:
+      - in: ['processing']     # First call from 'start' event
+      - in: ['completed', 42]  # Second call from 'finish' event
+---
+suite: TaskManager
+exportName: TaskManager
+mode: class
+constructorArgs: []
+---
+case: test successful task execution with callbacks
+executions:
+  - method: onStart
+    in: [$mock:startCallback]
+  - method: onComplete
+    in: [$mock:completeCallback]
+  - method: executeTask
+    in: ['mytask']
+    out: 'mytask completed'
+mocks:
+  startCallback:
+    calls:
+      - in: ['mytask']
+  completeCallback:
+    calls:
+      - in: ['mytask completed', 'mytask']
+---
+case: test failed task execution with error callback
+executions:
+  - method: onStart
+    in: [$mock:startCallback]
+  - method: onError
+    in: [$mock:errorCallback]
+  - method: executeTask
+    in: ['fail']
+    throws: 'Task failed'
+mocks:
+  startCallback:
+    calls:
+      - in: ['fail']
+  errorCallback:
+    calls:
+      - in: ['Task failed', 'fail']
+---
+case: test batch execution with mixed results
+executions:
+  - method: onStart
+    in: [$mock:startCallback]
+  - method: onComplete
+    in: [$mock:completeCallback]
+  - method: onError
+    in: [$mock:errorCallback]
+  - method: runBatch
+    in: [['task1', 'fail', 'task2']]
+    out: ['task1 completed', null, 'task2 completed']
+mocks:
+  startCallback:
+    calls:
+      - in: ['task1']
+      - in: ['fail']
+      - in: ['task2']
+  completeCallback:
+    calls:
+      - in: ['task1 completed', 'task1']
+      - in: ['task2 completed', 'task2']
+  errorCallback:
+    calls:
+      - in: ['Task failed', 'fail']

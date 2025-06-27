@@ -1,4 +1,4 @@
-file: '../mathClass.js'
+file: './mathClass.js'
 group: mathClass
 suites: [increment1, increment2]
 ---
