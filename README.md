@@ -188,12 +188,12 @@ executions:
 - `mode: 'class'` - Indicates this suite tests a class
 - `constructorArgs` - Arguments passed to the class constructor
 - `executions` - Array of method calls to execute in sequence
-  - `method` - Name of the method to call
+  - `method` - Name of the method to call (supports nested: `user.api.getData`)
   - `in` - Arguments to pass to the method
   - `out` - Expected return value (optional)
   - `asserts` - Assertions to run after the method call
-    - Property assertions: Check instance properties
-    - Method assertions: Call methods and check their return values
+    - Property assertions: Check instance properties (supports nested: `user.profile.name`)
+    - Method assertions: Call methods and check their return values (supports nested: `settings.getTheme`)
 
 ### Error Testing
 
@@ -387,21 +387,43 @@ For class tests:
 ```yaml
 case: 'test description'
 executions:
-  - method: 'methodName'
+  - method: 'methodName'        # Supports nested: 'user.api.getData'
     in: [arg1]
-    out: expectedValue    # Optional
-    throws: 'Error msg'   # Optional
+    out: expectedValue          # Optional
+    throws: 'Error msg'         # Optional
     asserts:
-      - property: 'prop'
-        op: 'eq'          # Currently only 'eq' is supported
+      - property: 'prop'        # Supports nested: 'user.profile.name'
+        op: 'eq'                # Currently only 'eq' is supported
         value: expected
-      - method: 'getter'
+      - method: 'getter'        # Supports nested: 'settings.ui.getTheme'
         in: []
         out: expected
-mocks:                    # Optional: Mocks for the entire test case
+mocks:                          # Optional: Mocks for the entire test case
   mockName:
     calls:
       - in: [args]
         out: result
+```
+
+#### Nested Properties and Methods
+
+Puty supports accessing nested properties and calling nested methods using dot notation:
+
+```yaml
+case: 'test nested access'
+executions:
+  - method: 'settings.ui.setTheme'    # Call nested method
+    in: ['dark']
+    out: 'dark'
+    asserts:
+      - property: 'user.profile.name'    # Access nested property
+        op: eq
+        value: 'John Doe'
+      - property: 'user.account.balance' # Deep nested property
+        op: eq
+        value: 100.50
+      - method: 'api.client.get'         # Call nested method
+        in: ['/users/123']
+        out: 'GET /users/123'
 ```
 
