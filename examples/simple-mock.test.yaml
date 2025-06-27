@@ -1,0 +1,16 @@
+file: './simple-mock.js'
+group: simple-mock-test
+---
+suite: simpleAdd
+exportName: simpleAdd
+---
+case: basic test with mock
+in:
+  - 1
+  - 2
+  - $mock:logger
+out: 3
+mocks:
+  logger:
+    calls:
+      - in: ['Adding numbers']

@@ -1,4 +1,4 @@
-file: '../math.js'
+file: './math.js'
 group: math
 suites: [add, increment]
 ---

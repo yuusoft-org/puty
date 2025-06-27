@@ -149,6 +149,7 @@ const processDocuments = (docs) => {
   const config = {
     file: null,
     group: null,
+    mocks: {},
     suites: [],
   };
 
@@ -158,6 +159,7 @@ const processDocuments = (docs) => {
     if (doc.file) {
       config.file = doc.file;
       config.group = doc.group || doc.name;
+      config.mocks = doc.mocks || {};
       if (doc.suites) {
         config.suiteNames = doc.suites;
       }
@@ -168,6 +170,7 @@ const processDocuments = (docs) => {
       currentSuite = {
         name: doc.suite,
         exportName: doc.exportName || doc.suite,
+        mocks: doc.mocks || {},
         cases: [],
       };
       // Only add mode and constructorArgs if mode is explicitly 'class'
@@ -178,6 +181,8 @@ const processDocuments = (docs) => {
     } else if (doc.case && currentSuite) {
       const testCase = {
         name: doc.case,
+        mocks: doc.mocks || {},
+        resolvedMocks: null,
       };
 
       if (currentSuite.mode === "class") {

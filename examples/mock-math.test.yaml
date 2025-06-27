@@ -1,0 +1,80 @@
+file: './mock-math.js'
+group: mock-math-tests
+---
+suite: calculateWithLogger
+exportName: calculateWithLogger
+---
+case: basic calculation with mocks
+in:
+  - 2
+  - 3
+  - $mock:logger
+out: 5
+mocks:
+  # Case-level mock - specific to this test case
+  logger:
+    calls:
+      - in: ['info', 'Calculating 2 + 3']
+      - in: ['debug', 'Result: 5']
+---
+case: calculation with global logger
+in:
+  - 10
+  - 20
+  - $mock:globalLogger
+out: 30
+mocks:
+  globalLogger:
+    calls:
+      - in: ['info', 'Calculating 10 + 20']
+      - in: ['debug', 'Result: 30']
+# This case overrides the global logger with specific expectations
+---
+suite: processData
+exportName: processData
+---
+case: successful data processing
+in:
+  - 'test-data'
+  - $mock:validator
+  - $mock:transformer
+out: 'transformed-data'
+mocks:
+  validator:
+    calls:
+      - in: ['test-data']
+        out: true
+  transformer:
+    calls:
+      - in: ['test-data']
+        out: 'transformed-data'
+---
+case: validation failure
+in:
+  - 'invalid-data'
+  - $mock:failValidator
+  - $mock:transformer
+throws: 'Invalid data'
+mocks:
+  failValidator:
+    calls:
+      - in: ['invalid-data']
+        out: false
+  transformer:
+    calls: []
+---
+case: mock with multiple calls
+in:
+  - ['item1', 'item2']
+  - $mock:multiValidator
+  - $mock:batchTransformer
+out: ['transformed1', 'transformed2']
+mocks:
+  multiValidator:
+    calls:
+      - in: [['item1', 'item2']]
+        out: true
+  batchTransformer:
+    calls:
+      - in: [['item1', 'item2']]
+        out: ['transformed1', 'transformed2']

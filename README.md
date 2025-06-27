@@ -13,6 +13,7 @@ Puty is ideal for testing pure functions - functions that always return the same
   - [Testing Functions](#testing-functions)
   - [Testing Classes](#testing-classes)
   - [Error Testing](#error-testing)
+  - [Using Mocks](#using-mocks)
   - [Using !include Directive](#using-include-directive)
 - [YAML Structure](#yaml-structure)
 
@@ -21,6 +22,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 - 📝 Write tests in simple YAML format
 - 📦 Modular test organization with `!include` directive
 - 🎯 Clear separation of test data and test logic
+- 🧪 Mock support for testing functions with dependencies
 - ⚡ Powered by Vitest for fast test execution
 
 ## Installation
@@ -203,6 +205,79 @@ in: [10, 0]
 throws: "Division by zero"
 ```
 
+### Using Mocks
+
+Puty supports mocking dependencies using the `$mock:` syntax. This is useful for testing functions that have external dependencies like loggers, API clients, or callbacks.
+
+#### Basic Mock Example
+
+```yaml
+file: './calculator.js'
+group: calculator
+---
+suite: calculate
+exportName: calculateWithLogger
+---
+case: test with mock logger
+in:
+  - 10
+  - 5
+  - $mock:logger
+out: 15
+mocks:
+  logger:
+    calls:
+      - in: ['Calculating 10 + 5']
+      - in: ['Result: 15']
+```
+
+#### Mock Hierarchy
+
+Mocks can be defined at three levels (case overrides suite, suite overrides global):
+
+```yaml
+file: './service.js'
+group: service
+mocks:
+  globalApi:    # Global mock - available to all suites
+    calls:
+      - in: ['/default']
+        out: { status: 200 }
+---
+suite: userService
+mocks:
+  api:          # Suite mock - available to all cases in this suite
+    calls:
+      - in: ['/users']
+        out: { users: [] }
+---
+case: get user with mock
+in: [123, $mock:api]
+out: { id: 123, name: 'John' }
+mocks:
+  api:          # Case mock - overrides suite mock
+    calls:
+      - in: ['/users/123']
+        out: { id: 123, name: 'John' }
+```
+
+#### Testing Callbacks
+
+Mocks are perfect for testing event-driven code:
+
+```yaml
+case: test event emitter
+executions:
+  - method: on
+    in: ['data', $mock:callback]
+  - method: emit
+    in: ['data', 'hello']
+mocks:
+  callback:
+    calls:
+      - in: ['hello']
+```
+
 ### Using !include Directive
 
 Puty supports the `!include` directive to modularize and reuse YAML test files. This is useful for:
@@ -271,6 +346,11 @@ Puty test files use multi-document YAML format with three types of documents:
 file: './module.js'        # Required: Path to JS file (relative to YAML file)
 group: 'test-group'        # Required: Test group name (or use 'name')
 suites: ['suite1', 'suite2'] # Optional: List of suites to define
+mocks:                     # Optional: Global mocks available to all suites
+  mockName:
+    calls:
+      - in: [args]
+        out: result
 ```
 
 ### 2. Suite Definition Documents
@@ -280,6 +360,11 @@ suite: 'suiteName'         # Required: Suite name
 exportName: 'functionName' # Optional: Export to test (defaults to suite name or 'default')
 mode: 'class'              # Optional: Set to 'class' for class testing
 constructorArgs: [arg1]    # Optional: Arguments for class constructor (class mode only)
+mocks:                     # Optional: Suite-level mocks for all cases in this suite
+  mockName:
+    calls:
+      - in: [args]
+        out: result
 ```
 
 ### 3. Test Case Documents
@@ -287,9 +372,15 @@ constructorArgs: [arg1]    # Optional: Arguments for class constructor (class mo
 For function tests:
 ```yaml
 case: 'test description'   # Required: Test case name
-in: [arg1, arg2]          # Required: Input arguments
+in: [arg1, arg2]          # Required: Input arguments (use $mock:name for mocks)
 out: expectedValue        # Optional: Expected output (omit if testing for errors)
 throws: 'Error message'   # Optional: Expected error message
+mocks:                    # Optional: Case-specific mocks
+  mockName:
+    calls:                # Array of expected calls
+      - in: [args]        # Expected arguments
+        out: result       # Optional: Return value
+        throws: 'error'   # Optional: Throw error instead
 ```
 
 For class tests:
@@ -307,5 +398,10 @@ executions:
       - method: 'getter'
         in: []
         out: expected
+mocks:                    # Optional: Mocks for the entire test case
+  mockName:
+    calls:
+      - in: [args]
+        out: result
 ```
 

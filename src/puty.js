@@ -9,6 +9,7 @@ import yaml from "js-yaml";
 import { expect, test, describe } from "vitest";
 
 import { traverseAllFiles, parseWithIncludes } from "./utils.js";
+import { resolveMocks, processMockReferences, createMockFunctions, validateMockCalls } from "./mockResolver.js";
 
 /**
  * File extensions that are recognized as YAML test files
@@ -43,6 +44,7 @@ export const parseYamlDocuments = (yamlContent) => {
   const config = {
     file: null,
     group: null,
+    mocks: {},
     suites: [],
   };
 
@@ -52,6 +54,7 @@ export const parseYamlDocuments = (yamlContent) => {
     if (doc.file) {
       config.file = doc.file;
       config.group = doc.group || doc.name;
+      config.mocks = doc.mocks || {};
       if (doc.suites) {
         config.suiteNames = doc.suites;
       }
@@ -62,6 +65,7 @@ export const parseYamlDocuments = (yamlContent) => {
       currentSuite = {
         name: doc.suite,
         exportName: doc.exportName || doc.suite,
+        mocks: doc.mocks || {},
         cases: [],
       };
       // Only add mode and constructorArgs if mode is explicitly 'class'
@@ -72,6 +76,8 @@ export const parseYamlDocuments = (yamlContent) => {
     } else if (doc.case && currentSuite) {
       const testCase = {
         name: doc.case,
+        mocks: doc.mocks || {},
+        resolvedMocks: null,
       };
 
       if (currentSuite.mode === "class") {
@@ -149,18 +155,31 @@ const setupFunctionTests = (suite) => {
       out: expectedOut,
       functionUnderTest,
       throws,
+      mockFunctions,
     } = testCase;
     test(name, () => {
       if (!functionUnderTest) {
         throw new Error(`Function not found for test case: ${name}`);
       }
 
-      if (throws) {
-        // Test expects an error to be thrown
-        expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
-      } else {
-        const out = functionUnderTest(...(inArg || []));
-        expect(out).toEqual(expectedOut);
+      try {
+        if (throws) {
+          // Test expects an error to be thrown
+          expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
+        } else {
+          const out = functionUnderTest(...(inArg || []));
+          expect(out).toEqual(expectedOut);
+        }
+        
+        // Validate mock calls after test execution
+        if (mockFunctions && Object.keys(mockFunctions).length > 0) {
+          validateMockCalls(mockFunctions);
+        }
+      } finally {
+        // Cleanup mocks after test
+        if (mockFunctions) {
+          Object.values(mockFunctions).forEach(mock => mock.mockFunction.mockClear?.());
+        }
       }
     });
   }
@@ -178,7 +197,7 @@ const setupFunctionTests = (suite) => {
 const setupClassTests = (suite) => {
   const { cases, ClassUnderTest, constructorArgs } = suite;
   for (const testCase of cases) {
-    const { name, executions } = testCase;
+    const { name, executions, mockFunctions } = testCase;
     test(name, () => {
       if (!ClassUnderTest) {
         throw new Error(`Class not found for test suite: ${suite.name}`);
@@ -186,56 +205,68 @@ const setupClassTests = (suite) => {
 
       const instance = new ClassUnderTest(...constructorArgs);
 
-      for (const execution of executions) {
-        const {
-          method,
-          in: inArg,
-          out: expectedOut,
-          throws,
-          asserts,
-        } = execution;
+      try {
+        for (const execution of executions) {
+          const {
+            method,
+            in: inArg,
+            out: expectedOut,
+            throws,
+            asserts,
+          } = execution;
 
-        // Validate method exists
-        if (!instance[method] || typeof instance[method] !== "function") {
-          throw new Error(`Method '${method}' not found on class instance`);
-        }
-
-        // Execute the method and check its return value
-        if (throws) {
-          expect(() => instance[method](...(inArg || []))).toThrow(throws);
-        } else {
-          const result = instance[method](...(inArg || []));
-          if (expectedOut !== undefined) {
-            expect(result).toEqual(expectedOut);
+          // Validate method exists
+          if (!instance[method] || typeof instance[method] !== "function") {
+            throw new Error(`Method '${method}' not found on class instance`);
           }
-        }
 
-        // Run assertions
-        if (asserts) {
-          for (const assertion of asserts) {
-            if (assertion.property) {
-              // Property assertion
-              const actualValue = instance[assertion.property];
-              if (assertion.op === "eq") {
-                expect(actualValue).toEqual(assertion.value);
-              }
-              // Add more operators as needed
-            } else if (assertion.method) {
-              // Method assertion
-              if (
-                !instance[assertion.method] ||
-                typeof instance[assertion.method] !== "function"
-              ) {
-                throw new Error(
-                  `Method '${assertion.method}' not found on class instance for assertion`,
-                );
-              }
-              const result = instance[assertion.method](
-                ...(assertion.in || []),
-              );
-              expect(result).toEqual(assertion.out);
+          // Execute the method and check its return value
+          if (throws) {
+            expect(() => instance[method](...(inArg || []))).toThrow(throws);
+          } else {
+            const result = instance[method](...(inArg || []));
+            if (expectedOut !== undefined) {
+              expect(result).toEqual(expectedOut);
             }
           }
+
+          // Run assertions
+          if (asserts) {
+            for (const assertion of asserts) {
+              if (assertion.property) {
+                // Property assertion
+                const actualValue = instance[assertion.property];
+                if (assertion.op === "eq") {
+                  expect(actualValue).toEqual(assertion.value);
+                }
+                // Add more operators as needed
+              } else if (assertion.method) {
+                // Method assertion
+                if (
+                  !instance[assertion.method] ||
+                  typeof instance[assertion.method] !== "function"
+                ) {
+                  throw new Error(
+                    `Method '${assertion.method}' not found on class instance for assertion`,
+                  );
+                }
+                const result = instance[assertion.method](
+                  ...(assertion.in || []),
+                );
+                expect(result).toEqual(assertion.out);
+              }
+            }
+          }
+        }
+        
+        // Validate mock calls after test execution
+        if (mockFunctions && Object.keys(mockFunctions).length > 0) {
+          validateMockCalls(mockFunctions);
+        }
+      } finally {
+        // Cleanup mocks after test
+        if (mockFunctions) {
+          Object.values(mockFunctions).forEach(mock => mock.mockFunction.mockClear?.());
         }
       }
     });
@@ -262,6 +293,38 @@ export const injectFunctions = (module, originalTestConfig) => {
   let functionUnderTest = module[testConfig.exportName || "default"];
 
   for (const suite of testConfig.suites) {
+    for (const testCase of suite.cases) {
+      // Resolve mocks for this test case using hierarchy
+      testCase.resolvedMocks = resolveMocks(
+        testCase.mocks,
+        suite.mocks,
+        testConfig.mocks
+      );
+      
+      // Create mock functions from resolved mock definitions
+      testCase.mockFunctions = createMockFunctions(testCase.resolvedMocks);
+      
+      // Process mock references in test inputs and outputs
+      if (testCase.in) {
+        testCase.in = processMockReferences(testCase.in, testCase.mockFunctions);
+      }
+      if (testCase.out) {
+        testCase.out = processMockReferences(testCase.out, testCase.mockFunctions);
+      }
+      
+      // Process mock references in class test executions
+      if (testCase.executions) {
+        for (const execution of testCase.executions) {
+          if (execution.in) {
+            execution.in = processMockReferences(execution.in, testCase.mockFunctions);
+          }
+          if (execution.out) {
+            execution.out = processMockReferences(execution.out, testCase.mockFunctions);
+          }
+        }
+      }
+    }
+    
     if (suite.mode === "class") {
       const exportName = suite.exportName || "default";
       const exported = module[exportName];
@@ -305,15 +368,19 @@ export const injectFunctions = (module, originalTestConfig) => {
 export const setupTestSuiteFromYaml = async (dirname) => {
   const testYamlFiles = traverseAllFiles(dirname, extensions);
   for (const file of testYamlFiles) {
-    const testConfig = parseWithIncludes(file);
-    const filepathRelativeToSpecFile = path.join(
-      path.dirname(file),
-      testConfig.file,
-    );
+    try {
+      const testConfig = parseWithIncludes(file);
+      const filepathRelativeToSpecFile = path.join(
+        path.dirname(file),
+        testConfig.file,
+      );
 
-    // testConfig.file is relative to the spec file
-    const module = await import(filepathRelativeToSpecFile);
-    const testConfigWithInjectedFunctions = injectFunctions(module, testConfig);
-    setupTestSuite(testConfigWithInjectedFunctions);
+      // testConfig.file is relative to the spec file
+      const module = await import(filepathRelativeToSpecFile);
+      const testConfigWithInjectedFunctions = injectFunctions(module, testConfig);
+      setupTestSuite(testConfigWithInjectedFunctions);
+    } catch (error) {
+      throw error;
+    }
   }
 };

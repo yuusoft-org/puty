@@ -197,21 +197,27 @@ describe("parseWithIncludes", () => {
     expect(result).toEqual({
       file: "./math.js",
       group: "math-include",
+      mocks: {},
       suiteNames: ["add"],
       suites: [
         {
           name: "add",
           exportName: "add",
+          mocks: {},
           cases: [
             {
               name: "add 1 and 2",
               in: [1, 2],
               out: 3,
+              mocks: {},
+              resolvedMocks: null,
             },
             {
               name: "add 5 and 7",
               in: [5, 7],
               out: 12,
+              mocks: {},
+              resolvedMocks: null,
             },
           ],
         },
@@ -226,15 +232,19 @@ describe("parseWithIncludes", () => {
     expect(result).toEqual({
       file: "./simple.js",
       group: "values-test",
+      mocks: {},
       suites: [
         {
           name: "test",
           exportName: "test",
+          mocks: {},
           cases: [
             {
               name: "test with included values",
               in: [10, 20],
               out: 30,
+              mocks: {},
+              resolvedMocks: null,
             },
           ],
         },
@@ -252,15 +262,19 @@ describe("parseWithIncludes", () => {
     expect(result).toEqual({
       file: "./lib.js",
       group: "recursive-test",
+      mocks: {},
       suites: [
         {
           name: "test",
           exportName: "default",
+          mocks: {},
           cases: [
             {
               name: "nested include test",
               in: [],
               out: "success",
+              mocks: {},
+              resolvedMocks: null,
             },
           ],
         },

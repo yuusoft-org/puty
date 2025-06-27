@@ -1,0 +1,140 @@
+file: './advanced-callbacks.js'
+group: advanced-callbacks-tests
+---
+suite: HttpClient
+exportName: HttpClient
+mode: class
+constructorArgs: ['https://api.example.com']
+---
+case: test interceptor pattern with multiple callbacks
+executions:
+  - method: onRequest
+    in: [$mock:requestLogger]
+  - method: onRequest
+    in: [$mock:requestValidator]
+  - method: onResponse
+    in: [$mock:responseLogger]
+  - method: get
+    in: ['/users/123']
+    out: 
+      status: 200
+      data:
+        message: 'success'
+        url: 'https://api.example.com/users/123'
+      config:
+        method: 'GET'
+        url: 'https://api.example.com/users/123'
+mocks:
+  requestLogger:
+    calls:
+      - in:
+        - method: 'GET'
+          url: 'https://api.example.com/users/123'
+  requestValidator:
+    calls:
+      - in:
+        - method: 'GET'
+          url: 'https://api.example.com/users/123'
+  responseLogger:
+    calls:
+      - in:
+        - status: 200
+          data:
+            message: 'success'
+            url: 'https://api.example.com/users/123'
+          config:
+            method: 'GET'
+            url: 'https://api.example.com/users/123'
+---
+suite: AsyncProcessor
+exportName: AsyncProcessor
+mode: class
+constructorArgs: []
+---
+case: test async processing with progress updates
+executions:
+  - method: onProgress
+    in: [$mock:progressCallback]
+  - method: onComplete
+    in: [$mock:completeCallback]
+  - method: processItems
+    in: [['task1', 'task2', 'task3']]
+    out: ['processed_task1', 'processed_task2', 'processed_task3']
+mocks:
+  progressCallback:
+    calls:
+      - in:
+        - current: 1
+          total: 3
+          item: 'task1'
+          percent: 33
+      - in:
+        - current: 2
+          total: 3
+          item: 'task2'
+          percent: 67
+      - in:
+        - current: 3
+          total: 3
+          item: 'task3'
+          percent: 100
+  completeCallback:
+    calls:
+      - in: [['processed_task1', 'processed_task2', 'processed_task3']]
+---
+case: test error handling during async processing
+executions:
+  - method: onProgress
+    in: [$mock:progressCallback]
+  - method: onError
+    in: [$mock:errorCallback]
+  - method: processItems
+    in: [['good', 'error', 'never_reached']]
+    throws: 'Failed to process item: error'
+mocks:
+  progressCallback:
+    calls:
+      - in:
+        - current: 1
+          total: 3
+          item: 'good'
+          percent: 33
+      - in:
+        - current: 2
+          total: 3
+          item: 'error'
+          percent: 67
+  errorCallback:
+    calls:
+      - in: [{}, ['processed_good']]
+---
+suite: FileWatcher
+exportName: FileWatcher
+mode: class
+constructorArgs: ['/watched/path']
+---
+case: test file watcher lifecycle with events
+executions:
+  - method: on
+    in: ['start', $mock:startCallback]
+  - method: on
+    in: ['ready', $mock:readyCallback]
+  - method: on
+    in: ['change', $mock:changeCallback]
+  - method: start
+  - method: simulateChange
+    in: ['config.json', 'change']
+  - method: simulateChange
+    in: ['data.csv', 'change']
+  - method: stop
+mocks:
+  startCallback:
+    calls:
+      - in: ['/watched/path']
+  readyCallback:
+    calls:
+      - in: [['file1.txt', 'file2.txt']]
+  changeCallback:
+    calls:
+      - in: ['config.json', { size: 1024, mtime: {} }]
+      - in: ['data.csv', { size: 1024, mtime: {} }]
