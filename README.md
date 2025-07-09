@@ -33,42 +33,107 @@ npm install puty
 
 ## Quick Start
 
+Get up and running with Puty in just a few minutes!
 
-1. Create a test runner file `puty.test.js` in your project:
+### Prerequisites
+
+- Node.js with ES modules support
+- Vitest installed in your project
+
+### Step 1: Install Puty
+
+```bash
+npm install puty
+```
+
+### Step 2: Setup Your Project
+
+Ensure your `package.json` has ES modules enabled:
+
+```json
+{
+  "type": "module"
+}
+```
+
+### Step 3: Create a Function to Test
+
+Create `utils/validator.js`:
+
+```js
+export function isValidEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+export function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+```
+
+### Step 4: Create Your Test File
+
+Create `validator.test.yaml`:
+
+```yaml
+file: './utils/validator.js'
+group: validator
+suites: [isValidEmail, capitalize]
+---
+suite: isValidEmail
+exportName: isValidEmail
+---
+case: valid email should return true
+in: ['user@example.com']
+out: true
+---
+case: invalid email should return false
+in: ['invalid-email']
+out: false
+---
+case: empty string should return false
+in: ['']
+out: false
+---
+suite: capitalize
+exportName: capitalize
+---
+case: capitalize first letter
+in: ['hello']
+out: 'Hello'
+---
+case: single letter
+in: ['a']
+out: 'A'
+```
+
+### Step 5: Create Test Runner
+
+Create `puty.test.js`:
 
 ```js
 import { setupTestSuiteFromYaml } from "puty";
 
-// Search for test files in the current directory
+// This will automatically find and run all *.test.yaml files
 await setupTestSuiteFromYaml();
-
-// Or specify a different directory
-// await setupTestSuiteFromYaml("./tests");
 ```
 
-**Note:** Puty uses ES module imports and requires your project to support ES modules. If you're using Node.js, make sure to add `"type": "module"` to your `package.json` or use `.mjs` file extensions.
-
-
-2. Create your first test file `math.test.yaml`:
-
-```yaml
-file: './math.js'
-group: math
-suites: [add]
----
-suite: add
-exportName: add
----
-case: add two numbers
-in: [2, 3]
-out: 5
-```
-
-3. Run your tests:
+### Step 6: Run Your Tests
 
 ```bash
 npx vitest
 ```
+
+You should see output like:
+```
+✓ validator > isValidEmail > valid email should return true
+✓ validator > isValidEmail > invalid email should return false
+✓ validator > isValidEmail > empty string should return false
+✓ validator > capitalize > capitalize first letter
+✓ validator > capitalize > single letter
+```
+
+🎉 **That's it!** You've just created declarative tests using YAML instead of JavaScript.
 
 ### Recommended Vitest Configuration
 
