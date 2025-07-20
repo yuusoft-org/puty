@@ -492,3 +492,344 @@ executions:
         out: 'GET /users/123'
 ```
 
+## Real-World Examples
+
+### Testing a User Service
+
+```yaml
+file: './services/userService.js'
+group: UserService
+suites: [crud-operations]
+---
+suite: crud-operations
+exportName: UserService
+mode: class
+constructorArgs: [$mock:database]
+---
+case: create user successfully
+executions:
+  - method: createUser
+    in: 
+      - name: 'John Doe'
+        email: 'john@example.com'
+        age: 30
+    out: 
+      id: 1
+      name: 'John Doe'
+      email: 'john@example.com'
+      age: 30
+    asserts:
+      - property: users.length
+        op: eq
+        value: 1
+mocks:
+  database:
+    calls:
+      - in: ['INSERT', { name: 'John Doe', email: 'john@example.com', age: 30 }]
+        out: { id: 1, name: 'John Doe', email: 'john@example.com', age: 30 }
+---
+case: handle duplicate email error
+executions:
+  - method: createUser
+    in:
+      - name: 'Jane Doe'
+        email: 'existing@example.com'
+    throws: 'Email already exists'
+mocks:
+  database:
+    calls:
+      - in: ['INSERT', { name: 'Jane Doe', email: 'existing@example.com' }]
+        throws: 'DUPLICATE_EMAIL'
+```
+
+### Testing a Shopping Cart
+
+```yaml
+file: './models/shoppingCart.js'
+group: ShoppingCart
+suites: [cart-operations]
+---
+suite: cart-operations
+mode: class
+exportName: ShoppingCart
+---
+case: add items and calculate total
+executions:
+  - method: addItem
+    in: 
+      - id: 'PROD-001'
+        name: 'Laptop'
+        price: 999.99
+        quantity: 1
+  - method: addItem
+    in:
+      - id: 'PROD-002'
+        name: 'Mouse'
+        price: 29.99
+        quantity: 2
+  - method: getTotal
+    out: 1059.97
+  - method: getItemCount
+    out: 3
+    asserts:
+      - property: items.length
+        op: eq
+        value: 2
+---
+case: apply discount code
+executions:
+  - method: addItem
+    in: [{id: 'PROD-003', name: 'Keyboard', price: 79.99, quantity: 1}]
+  - method: applyDiscount
+    in: ['SAVE20']
+    out: true
+  - method: getTotal
+    out: 63.99
+    asserts:
+      - property: discount
+        op: eq
+        value: 0.2
+```
+
+### Testing API Endpoints
+
+```yaml
+file: './api/weatherAPI.js'
+group: WeatherAPI
+mocks:
+  httpClient:
+    calls:
+      - in: ['GET', 'https://api.weather.com/v1/current?city=London']
+        out: { temp: 15, condition: 'cloudy', humidity: 65 }
+---
+suite: weather-fetching
+exportName: WeatherAPI
+---
+case: fetch current weather
+in: ['London', $mock:httpClient]
+out:
+  city: 'London'
+  temperature: 15
+  condition: 'cloudy'
+  humidity: 65
+---
+case: handle API error gracefully
+in: ['InvalidCity', $mock:httpClient]
+throws: 'Weather data not available'
+mocks:
+  httpClient:
+    calls:
+      - in: ['GET', 'https://api.weather.com/v1/current?city=InvalidCity']
+        throws: 'City not found'
+```
+
+## API Reference
+
+### setupTestSuiteFromYaml(path?)
+
+The main function to set up test suites from YAML files.
+
+```js
+import { setupTestSuiteFromYaml } from 'puty';
+
+// Run all *.test.yaml files in the project
+await setupTestSuiteFromYaml();
+
+// Run a specific YAML file
+await setupTestSuiteFromYaml('./tests/specific.test.yaml');
+```
+
+**Parameters:**
+- `path` (optional): Path to a specific YAML test file. If omitted, runs all `*.test.yaml` files.
+
+**Returns:** Promise that resolves when all test suites are set up.
+
+## Best Practices
+
+### 1. Organize Tests by Feature
+
+```
+tests/
+├── auth/
+│   ├── login.test.yaml
+│   └── register.test.yaml
+├── cart/
+│   ├── add-items.test.yaml
+│   └── checkout.test.yaml
+└── shared/
+    ├── test-data.yaml
+    └── mocks.yaml
+```
+
+### 2. Use Descriptive Test Names
+
+```yaml
+# Good
+case: should return user data when valid ID provided
+
+# Less descriptive
+case: test user fetch
+```
+
+### 3. Leverage !include for Shared Data
+
+```yaml
+# shared/users.yaml
+validUser:
+  name: 'Test User'
+  email: 'test@example.com'
+  age: 25
+
+# auth/register.test.yaml
+case: register valid user
+in: 
+  - !include ../shared/users.yaml#validUser
+out: { success: true, userId: 123 }
+```
+
+### 4. Test Edge Cases
+
+```yaml
+case: handle empty array
+in: [[]]
+out: []
+---
+case: handle null values
+in: [null]
+throws: 'Cannot process null value'
+---
+case: handle very large numbers
+in: [9007199254740991]
+out: '9007199254740991'
+```
+
+### 5. Use Mocks Wisely
+
+- Define mocks at the appropriate level (global, suite, or case)
+- Verify mock calls to ensure correct integration
+- Keep mock data realistic
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Cannot find module" Error
+
+**Problem:** Vitest can't find your YAML test files.
+
+**Solution:** Ensure your test runner file imports and calls `setupTestSuiteFromYaml()`:
+
+```js
+// puty.test.js
+import { setupTestSuiteFromYaml } from "puty";
+await setupTestSuiteFromYaml();
+```
+
+#### YAML Parsing Errors
+
+**Problem:** Invalid YAML syntax.
+
+**Solution:** 
+- Check for proper indentation (use spaces, not tabs)
+- Ensure strings with colons are quoted
+- Validate YAML with an online parser
+
+#### Mocks Not Working
+
+**Problem:** Mock functions aren't being called.
+
+**Solution:**
+- Use `$mock:mockName` syntax in your input arguments
+- Ensure mock is defined at the correct scope
+- Check that mock call expectations match actual calls
+
+#### Tests Not Re-running on YAML Changes
+
+**Problem:** Vitest doesn't detect YAML file changes.
+
+**Solution:** Add YAML files to Vitest config:
+
+```js
+// vitest.config.js
+export default defineConfig({
+  test: {
+    forceRerunTriggers: [
+      '**/*.js',
+      '**/*.{test,spec}.yaml',
+      '**/*.{test,spec}.yml'
+    ],
+  },
+});
+```
+
+### Debug Mode
+
+To see detailed test execution, run Vitest with verbose output:
+
+```bash
+vitest --reporter=verbose
+```
+
+## Contributing
+
+We welcome contributions! Here's how you can help:
+
+### Reporting Issues
+
+1. Check existing issues to avoid duplicates
+2. Include a minimal reproduction case
+3. Describe expected vs actual behavior
+4. Include your Node.js and Puty versions
+
+### Submitting Pull Requests
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Run tests: `npm test`
+6. Run linting: `npm run lint`
+7. Commit your changes (`git commit -m 'Add amazing feature'`)
+8. Push to your fork (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
+
+### Development Setup
+
+```bash
+# Clone the repo
+git clone https://github.com/yuusoft-org/puty.git
+cd puty
+
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Check code formatting
+npm run lint
+
+# Fix formatting issues
+npm run lint:fix
+```
+
+### Code Style
+
+- Use ES modules syntax
+- Follow existing code patterns
+- Add JSDoc comments for public APIs
+- Write tests for new features
+
+## License
+
+Puty is [MIT licensed](LICENSE).
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/yuusoft-org">Yuusoft</a>
+</p>
+
