@@ -1,0 +1,31 @@
+file: './undefined.js'
+group: undefined-tests
+---
+suite: returnsUndefined
+exportName: returnsUndefined
+---
+case: without out field - no assertion
+in: []
+# No out field - function is called but return value is not asserted
+---
+suite: returnsNull  
+exportName: returnsNull
+---
+case: without out field - no assertion
+in: []
+# No out field
+---
+case: with out null - assert return is null
+in: []
+out:  # Expects null and function returns null
+---
+suite: returnsValue
+exportName: returnsValue
+---
+case: without out field - no assertion
+in: []
+# No out field - function returns 42 but we don't assert it
+---
+case: with out 42 - assert return is 42
+in: []
+out: 42

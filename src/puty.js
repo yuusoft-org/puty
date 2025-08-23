@@ -159,7 +159,10 @@ export const parseYamlDocuments = (yamlContent) => {
         testCase.executions = doc.executions || [];
       } else {
         testCase.in = doc.in || [];
-        testCase.out = doc.out;
+        // Always preserve 'out' field if present (including when it's undefined)
+        if ("out" in doc) {
+          testCase.out = doc.out;
+        }
         if (doc.throws) {
           testCase.throws = doc.throws;
         }
@@ -231,7 +234,6 @@ const setupFunctionTests = (suite) => {
     const {
       name,
       in: inArg,
-      out: expectedOut,
       functionUnderTest,
       throws,
       mockFunctions,
@@ -243,72 +245,67 @@ const setupFunctionTests = (suite) => {
       }
 
       try {
-        if (executions && executions.length > 0) {
-          // Function test with executions (factory pattern)
-          const instance = functionUnderTest(...(inArg || []));
+        if (throws) {
+          // Test expects an error to be thrown
+          expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
+        } else {
+          // Call the function
+          const result = functionUnderTest(...(inArg || []));
 
-          // Only assert return value if 'out' is explicitly provided
-          if (expectedOut !== undefined) {
-            expect(instance).toEqual(expectedOut);
+          // Assert return value if 'out' field is present in the test case
+          if ("out" in testCase) {
+            expect(result).toEqual(testCase.out);
           }
 
-          // Execute methods on the returned object
-          for (const execution of executions) {
-            const {
-              method,
-              in: execInArg,
-              out: execExpectedOut,
-              throws: execThrows,
-              asserts,
-            } = execution;
-
-            if (execThrows) {
-              expect(() =>
-                callNestedMethod(instance, method, execInArg || []),
-              ).toThrow(execThrows);
-            } else {
-              const result = callNestedMethod(
-                instance,
+          // If executions are present, execute methods on the returned object
+          if (executions && executions.length > 0) {
+            for (const execution of executions) {
+              const {
                 method,
-                execInArg || [],
-              );
-              if (execExpectedOut !== undefined) {
-                expect(result).toEqual(execExpectedOut);
-              }
-            }
+                in: execInArg,
+                out: execExpectedOut,
+                throws: execThrows,
+                asserts,
+              } = execution;
 
-            // Run assertions
-            if (asserts) {
-              for (const assertion of asserts) {
-                if (assertion.property) {
-                  const actualValue = getNestedProperty(
-                    instance,
-                    assertion.property,
-                  );
-                  if (assertion.op === "eq") {
-                    expect(actualValue).toEqual(assertion.value);
+              if (execThrows) {
+                expect(() =>
+                  callNestedMethod(result, method, execInArg || []),
+                ).toThrow(execThrows);
+              } else {
+                const methodResult = callNestedMethod(
+                  result,
+                  method,
+                  execInArg || [],
+                );
+                if (execExpectedOut !== undefined) {
+                  expect(methodResult).toEqual(execExpectedOut);
+                }
+              }
+
+              // Run assertions
+              if (asserts) {
+                for (const assertion of asserts) {
+                  if (assertion.property) {
+                    const actualValue = getNestedProperty(
+                      result,
+                      assertion.property,
+                    );
+                    if (assertion.op === "eq") {
+                      expect(actualValue).toEqual(assertion.value);
+                    }
+                  } else if (assertion.method) {
+                    const assertResult = callNestedMethod(
+                      result,
+                      assertion.method,
+                      assertion.in || [],
+                    );
+                    expect(assertResult).toEqual(assertion.out);
                   }
-                } else if (assertion.method) {
-                  const result = callNestedMethod(
-                    instance,
-                    assertion.method,
-                    assertion.in || [],
-                  );
-                  expect(result).toEqual(assertion.out);
                 }
               }
             }
           }
-        } else if (throws) {
-          // Test expects an error to be thrown
-          expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
-        } else if (expectedOut !== undefined) {
-          // Only assert return value if expectedOut is defined
-          const out = functionUnderTest(...(inArg || []));
-          expect(out).toEqual(expectedOut);
-        } else {
-          // Call function but don't assert return value
-          functionUnderTest(...(inArg || []));
         }
 
         // Validate mock calls after test execution

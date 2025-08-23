@@ -49,3 +49,14 @@ export function createCounter(start = 0) {
     }
   };
 }
+
+export function returnsUndefined() {
+  // This function returns undefined
+}
+
+export function sideEffectOnly(callback) {
+  // This function has side effects but returns undefined
+  if (callback) {
+    callback('side effect executed');
+  }
+}

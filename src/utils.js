@@ -189,9 +189,16 @@ const processDocuments = (docs) => {
         testCase.executions = doc.executions || [];
       } else {
         testCase.in = doc.in || [];
-        testCase.out = doc.out;
+        // Only add 'out' if it's present in the doc
+        if ("out" in doc) {
+          testCase.out = doc.out;
+        }
         if (doc.throws) {
           testCase.throws = doc.throws;
+        }
+        // Allow executions for function tests (factory pattern)
+        if (doc.executions) {
+          testCase.executions = doc.executions;
         }
       }
 

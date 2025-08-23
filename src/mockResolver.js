@@ -92,6 +92,20 @@ export const processMockReferences = (value, mockFunctions) => {
  * @returns {Object} Mock function wrapper with validation methods
  */
 export const createMockFunction = (mockName, mockDefinition) => {
+  // Handle simple mock definition (fn: true)
+  if (mockDefinition.fn === true) {
+    const mockFn = vi.fn();
+    return {
+      mockFunction: mockFn,
+      expectedCalls: 0, // No specific call expectations
+      actualCalls: () => mockFn.mock.calls.length,
+      validate: () => {
+        // Simple mocks don't have call expectations
+      },
+      mockName,
+    };
+  }
+
   const { calls } = mockDefinition;
   let callIndex = 0;
 

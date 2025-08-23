@@ -294,11 +294,27 @@ This pattern is useful for:
 - Module patterns that return APIs
 - Any function that returns an object you want to test methods on
 
-When `executions` is present and `out` is omitted, Puty will:
-1. Call the function with the provided arguments
-2. Skip asserting the return value
-3. Execute the specified methods on the returned object
-4. Assert method return values and run any additional assertions
+Key behaviors:
+- When `out` field is omitted: The function is called but its return value is not asserted
+- When `out:` is present (even empty): The return value is asserted (empty value in YAML equals `null`)
+- This works for any function test, with or without `executions`
+
+Examples:
+```yaml
+# No assertion on return value
+case: test without return assertion
+in: [1, 2]
+
+# Assert return value is null
+case: test null return
+in: [1, 2]
+out:
+
+# Assert return value is 42
+case: test specific return
+in: [1, 2]
+out: 42
+```
 
 ### Error Testing
 

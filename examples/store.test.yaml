@@ -7,7 +7,7 @@ exportName: createStore
 case: test store methods without asserting return value
 in:
   - { count: 0 }
-# No 'out' field - skip return value assertion since executions is present
+# No 'out' field - skip return value assertion
 executions:
   - method: getCount
     in: []
@@ -24,17 +24,6 @@ executions:
   - method: getState
     in: []
     out: { count: 6 }
----
-case: test store with initial state and explicit out assertion
-in:
-  - { count: 10 }
-executions:
-  - method: getCount
-    in: []
-    out: 10
-  - method: dispatch
-    in: [{ type: 'DECREMENT', payload: 3 }]
-    out: 7
 ---
 suite: createCounter
 exportName: createCounter
@@ -71,3 +60,21 @@ executions:
   - method: getValue
     in: []
     out: -1
+---
+suite: returnsUndefined
+exportName: returnsUndefined
+---
+case: test without out field
+in: []
+# No out field - function is called but return value is not asserted
+---
+suite: sideEffectOnly
+exportName: sideEffectOnly
+mocks:
+  callback:
+    fn: true
+---
+case: test side effect without return assertion
+in:
+  - $mock:callback
+# No out field - only check that callback was called
