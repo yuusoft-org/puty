@@ -12,6 +12,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 - [Usage](#usage)
   - [Testing Functions](#testing-functions)
   - [Testing Classes](#testing-classes)
+  - [Testing Factory Functions](#testing-factory-functions)
   - [Error Testing](#error-testing)
   - [Using Mocks](#using-mocks)
   - [Using !include Directive](#using-include-directive)
@@ -259,6 +260,45 @@ executions:
   - `asserts` - Assertions to run after the method call
     - Property assertions: Check instance properties (supports nested: `user.profile.name`)
     - Method assertions: Call methods and check their return values (supports nested: `settings.getTheme`)
+
+### Testing Factory Functions
+
+Puty supports testing factory functions that return objects with methods. When using `executions` in a function test, you can omit the `out` field to skip asserting the factory's return value:
+
+```yaml
+file: './store.js'
+group: store
+---
+suite: createStore
+exportName: createStore
+---
+case: test store methods
+in:
+  - { count: 0 }
+# No 'out' field - skip return value assertion
+executions:
+  - method: getCount
+    in: []
+    out: 0
+  - method: dispatch
+    in: [{ type: 'INCREMENT' }]
+    out: 1
+  - method: getCount
+    in: []
+    out: 1
+```
+
+This pattern is useful for:
+- Factory functions that return objects with methods
+- Builder patterns
+- Module patterns that return APIs
+- Any function that returns an object you want to test methods on
+
+When `executions` is present and `out` is omitted, Puty will:
+1. Call the function with the provided arguments
+2. Skip asserting the return value
+3. Execute the specified methods on the returned object
+4. Assert method return values and run any additional assertions
 
 ### Error Testing
 

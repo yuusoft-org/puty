@@ -1,0 +1,73 @@
+file: './store.js'
+group: store
+---
+suite: createStore
+exportName: createStore
+---
+case: test store methods without asserting return value
+in:
+  - { count: 0 }
+# No 'out' field - skip return value assertion since executions is present
+executions:
+  - method: getCount
+    in: []
+    out: 0
+  - method: dispatch
+    in: [{ type: 'INCREMENT' }]
+    out: 1
+  - method: getCount
+    in: []
+    out: 1
+  - method: dispatch
+    in: [{ type: 'INCREMENT', payload: 5 }]
+    out: 6
+  - method: getState
+    in: []
+    out: { count: 6 }
+---
+case: test store with initial state and explicit out assertion
+in:
+  - { count: 10 }
+executions:
+  - method: getCount
+    in: []
+    out: 10
+  - method: dispatch
+    in: [{ type: 'DECREMENT', payload: 3 }]
+    out: 7
+---
+suite: createCounter
+exportName: createCounter
+---
+case: counter factory without return assertion
+in: [5]
+# No out - focus on testing methods
+executions:
+  - method: getValue
+    in: []
+    out: 5
+  - method: increment
+    in: []
+    out: 6
+  - method: increment
+    in: []
+    out: 7
+  - method: decrement
+    in: []
+    out: 6
+  - method: reset
+    in: []
+    out: 5
+  - method: getValue
+    in: []
+    out: 5
+---
+case: counter with throws
+in: [0]
+executions:
+  - method: decrement
+    in: []
+    out: -1
+  - method: getValue
+    in: []
+    out: -1
