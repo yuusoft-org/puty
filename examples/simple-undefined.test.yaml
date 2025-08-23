@@ -1,0 +1,22 @@
+file: './simple-undefined.js'
+group: simple-undefined-tests
+---
+suite: returnsInput
+exportName: returnsInput
+mocks:
+  fn:
+    calls:
+      - in: []
+        out: __undefined__
+---
+case: test mock returning undefined
+in:
+  - $mock:fn
+out: __undefined__
+---
+suite: returnsUndefinedAlways
+exportName: returnsUndefinedAlways
+---
+case: test direct undefined
+in: []
+out: __undefined__

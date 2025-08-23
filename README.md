@@ -316,6 +316,37 @@ in: [1, 2]
 out: 42
 ```
 
+#### Testing Undefined Values
+
+To assert that a function returns `undefined`, use the special keyword `__undefined__`:
+
+```yaml
+# Assert function returns undefined
+case: test undefined return
+in: []
+out: __undefined__
+
+# Also works in executions
+executions:
+  - method: doSomething
+    in: []
+    out: __undefined__
+    
+# And in mock definitions
+mocks:
+  callback:
+    calls:
+      - in: ['data']
+        out: __undefined__
+```
+
+The `__undefined__` keyword works in:
+- Function return value assertions (`out: __undefined__`)
+- Method return value assertions in executions
+- Mock return values
+- Mock input expectations
+- Property assertions (`value: __undefined__`)
+
 ### Error Testing
 
 You can test that functions or methods throw expected errors:

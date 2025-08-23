@@ -254,7 +254,12 @@ const setupFunctionTests = (suite) => {
 
           // Assert return value if 'out' field is present in the test case
           if ("out" in testCase) {
-            expect(result).toEqual(testCase.out);
+            // Handle special __undefined__ keyword
+            if (testCase.out === "__undefined__") {
+              expect(result).toBe(undefined);
+            } else {
+              expect(result).toEqual(testCase.out);
+            }
           }
 
           // If executions are present, execute methods on the returned object
@@ -279,7 +284,12 @@ const setupFunctionTests = (suite) => {
                   execInArg || [],
                 );
                 if (execExpectedOut !== undefined) {
-                  expect(methodResult).toEqual(execExpectedOut);
+                  // Handle special __undefined__ keyword
+                  if (execExpectedOut === "__undefined__") {
+                    expect(methodResult).toBe(undefined);
+                  } else {
+                    expect(methodResult).toEqual(execExpectedOut);
+                  }
                 }
               }
 
@@ -292,7 +302,12 @@ const setupFunctionTests = (suite) => {
                       assertion.property,
                     );
                     if (assertion.op === "eq") {
-                      expect(actualValue).toEqual(assertion.value);
+                      // Handle special __undefined__ keyword
+                      if (assertion.value === "__undefined__") {
+                        expect(actualValue).toBe(undefined);
+                      } else {
+                        expect(actualValue).toEqual(assertion.value);
+                      }
                     }
                   } else if (assertion.method) {
                     const assertResult = callNestedMethod(
@@ -300,7 +315,12 @@ const setupFunctionTests = (suite) => {
                       assertion.method,
                       assertion.in || [],
                     );
-                    expect(assertResult).toEqual(assertion.out);
+                    // Handle special __undefined__ keyword
+                    if (assertion.out === "__undefined__") {
+                      expect(assertResult).toBe(undefined);
+                    } else {
+                      expect(assertResult).toEqual(assertion.out);
+                    }
                   }
                 }
               }
@@ -362,7 +382,12 @@ const setupClassTests = (suite) => {
           } else {
             const result = callNestedMethod(instance, method, inArg || []);
             if (expectedOut !== undefined) {
-              expect(result).toEqual(expectedOut);
+              // Handle special __undefined__ keyword
+              if (expectedOut === "__undefined__") {
+                expect(result).toBe(undefined);
+              } else {
+                expect(result).toEqual(expectedOut);
+              }
             }
           }
 
@@ -376,7 +401,12 @@ const setupClassTests = (suite) => {
                   assertion.property,
                 );
                 if (assertion.op === "eq") {
-                  expect(actualValue).toEqual(assertion.value);
+                  // Handle special __undefined__ keyword
+                  if (assertion.value === "__undefined__") {
+                    expect(actualValue).toBe(undefined);
+                  } else {
+                    expect(actualValue).toEqual(assertion.value);
+                  }
                 }
                 // Add more operators as needed
               } else if (assertion.method) {
@@ -386,7 +416,12 @@ const setupClassTests = (suite) => {
                   assertion.method,
                   assertion.in || [],
                 );
-                expect(result).toEqual(assertion.out);
+                // Handle special __undefined__ keyword
+                if (assertion.out === "__undefined__") {
+                  expect(result).toBe(undefined);
+                } else {
+                  expect(result).toEqual(assertion.out);
+                }
               }
             }
           }

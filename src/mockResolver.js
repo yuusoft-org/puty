@@ -118,8 +118,24 @@ export const createMockFunction = (mockName, mockDefinition) => {
 
     const expectedCall = calls[callIndex];
 
+    // Process __undefined__ in expected inputs recursively
+    const processUndefined = (value) => {
+      if (value === "__undefined__") return undefined;
+      if (Array.isArray(value)) return value.map(processUndefined);
+      if (value && typeof value === "object") {
+        const processed = {};
+        for (const [key, val] of Object.entries(value)) {
+          processed[key] = processUndefined(val);
+        }
+        return processed;
+      }
+      return value;
+    };
+
+    const processedExpectedIn = processUndefined(expectedCall.in);
+
     // Validate input arguments
-    if (!deepEqual(args, expectedCall.in)) {
+    if (!deepEqual(args, processedExpectedIn)) {
       throw new Error(
         `Expected ${mockName}(${JSON.stringify(expectedCall.in)}) but got ${mockName}(${JSON.stringify(args)})`,
       );
@@ -129,6 +145,11 @@ export const createMockFunction = (mockName, mockDefinition) => {
 
     if (expectedCall.throws) {
       throw new Error(expectedCall.throws);
+    }
+
+    // Handle special __undefined__ keyword
+    if (expectedCall.out === "__undefined__") {
+      return undefined;
     }
 
     return expectedCall.out;

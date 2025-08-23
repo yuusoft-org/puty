@@ -60,3 +60,19 @@ export function sideEffectOnly(callback) {
     callback('side effect executed');
   }
 }
+
+export function createApiWithUndefined() {
+  return {
+    doSomething() {
+      // This method returns undefined
+    },
+    
+    getValue() {
+      return 42;
+    },
+    
+    getNothing() {
+      return undefined;
+    }
+  };
+}

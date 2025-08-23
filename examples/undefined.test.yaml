@@ -8,6 +8,10 @@ case: without out field - no assertion
 in: []
 # No out field - function is called but return value is not asserted
 ---
+case: assert undefined return value with __undefined__
+in: []
+out: __undefined__  # Assert the return value is undefined
+---
 suite: returnsNull  
 exportName: returnsNull
 ---
