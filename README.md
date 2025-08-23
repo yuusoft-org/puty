@@ -110,13 +110,15 @@ out: 'A'
 
 ### Step 5: Create Test Runner
 
-Create `puty.test.js`:
+Create `puty.spec.js`:
 
 ```js
-import { setupTestSuiteFromYaml } from "puty";
+import path from 'path'
+import { setupTestSuiteFromYaml } from 'puty'
 
-// This will automatically find and run all *.test.yaml files
-await setupTestSuiteFromYaml();
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+
+await setupTestSuiteFromYaml(__dirname);
 ```
 
 ### Step 6: Run Your Tests
