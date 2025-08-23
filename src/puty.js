@@ -9,7 +9,12 @@ import yaml from "js-yaml";
 import { expect, test, describe } from "vitest";
 
 import { traverseAllFiles, parseWithIncludes } from "./utils.js";
-import { resolveMocks, processMockReferences, createMockFunctions, validateMockCalls } from "./mockResolver.js";
+import {
+  resolveMocks,
+  processMockReferences,
+  createMockFunctions,
+  validateMockCalls,
+} from "./mockResolver.js";
 
 /**
  * Resolves a nested property path on an object (e.g., "user.profile.name")
@@ -19,19 +24,21 @@ import { resolveMocks, processMockReferences, createMockFunctions, validateMockC
  * @throws {Error} If any part of the path doesn't exist
  */
 const getNestedProperty = (obj, path) => {
-  const parts = path.split('.');
+  const parts = path.split(".");
   let current = obj;
-  
+
   for (let i = 0; i < parts.length; i++) {
     if (current == null) {
-      throw new Error(`Cannot access property '${parts[i]}' of ${current} in path '${path}'`);
+      throw new Error(
+        `Cannot access property '${parts[i]}' of ${current} in path '${path}'`,
+      );
     }
     if (!(parts[i] in current)) {
       throw new Error(`Property '${parts[i]}' not found in path '${path}'`);
     }
     current = current[parts[i]];
   }
-  
+
   return current;
 };
 
@@ -44,34 +51,38 @@ const getNestedProperty = (obj, path) => {
  * @throws {Error} If any part of the path doesn't exist or final part is not a function
  */
 const callNestedMethod = (obj, path, args = []) => {
-  const parts = path.split('.');
+  const parts = path.split(".");
   const methodName = parts.pop();
-  
+
   let current = obj;
-  const parentPath = parts.join('.');
-  
+  const parentPath = parts.join(".");
+
   // Navigate to the parent object
   for (const part of parts) {
     if (current == null) {
-      throw new Error(`Cannot access property '${part}' of ${current} in path '${path}'`);
+      throw new Error(
+        `Cannot access property '${part}' of ${current} in path '${path}'`,
+      );
     }
     if (!(part in current)) {
       throw new Error(`Property '${part}' not found in path '${path}'`);
     }
     current = current[part];
   }
-  
+
   // Check if the method exists and is a function
   if (current == null) {
-    throw new Error(`Cannot access method '${methodName}' of ${current} in path '${path}'`);
+    throw new Error(
+      `Cannot access method '${methodName}' of ${current} in path '${path}'`,
+    );
   }
   if (!(methodName in current)) {
     throw new Error(`Method '${methodName}' not found in path '${path}'`);
   }
-  if (typeof current[methodName] !== 'function') {
+  if (typeof current[methodName] !== "function") {
     throw new Error(`'${methodName}' is not a function in path '${path}'`);
   }
-  
+
   return current[methodName](...args);
 };
 
@@ -86,7 +97,7 @@ const extensions = [".test.yaml", ".test.yml", ".spec.yaml", ".spec.yml"];
  * @param {string} yamlContent - Raw YAML content string to parse
  * @returns {Object} Structured test configuration object
  * @returns {string|null} returns.file - Path to the JavaScript file being tested
- * @returns {string|null} returns.group - Test group name  
+ * @returns {string|null} returns.group - Test group name
  * @returns {string[]} [returns.suiteNames] - Array of suite names defined in config
  * @returns {Object[]} returns.suites - Array of test suite objects
  * @example
@@ -148,9 +159,16 @@ export const parseYamlDocuments = (yamlContent) => {
         testCase.executions = doc.executions || [];
       } else {
         testCase.in = doc.in || [];
-        testCase.out = doc.out;
+        // Always preserve 'out' field if present (including when it's undefined)
+        if ("out" in doc) {
+          testCase.out = doc.out;
+        }
         if (doc.throws) {
           testCase.throws = doc.throws;
+        }
+        // Allow executions for function tests (factory pattern)
+        if (doc.executions) {
+          testCase.executions = doc.executions;
         }
       }
 
@@ -216,10 +234,10 @@ const setupFunctionTests = (suite) => {
     const {
       name,
       in: inArg,
-      out: expectedOut,
       functionUnderTest,
       throws,
       mockFunctions,
+      executions,
     } = testCase;
     test(name, () => {
       if (!functionUnderTest) {
@@ -231,10 +249,85 @@ const setupFunctionTests = (suite) => {
           // Test expects an error to be thrown
           expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
         } else {
-          const out = functionUnderTest(...(inArg || []));
-          expect(out).toEqual(expectedOut);
+          // Call the function
+          const result = functionUnderTest(...(inArg || []));
+
+          // Assert return value if 'out' field is present in the test case
+          if ("out" in testCase) {
+            // Handle special __undefined__ keyword
+            if (testCase.out === "__undefined__") {
+              expect(result).toBe(undefined);
+            } else {
+              expect(result).toEqual(testCase.out);
+            }
+          }
+
+          // If executions are present, execute methods on the returned object
+          if (executions && executions.length > 0) {
+            for (const execution of executions) {
+              const {
+                method,
+                in: execInArg,
+                out: execExpectedOut,
+                throws: execThrows,
+                asserts,
+              } = execution;
+
+              if (execThrows) {
+                expect(() =>
+                  callNestedMethod(result, method, execInArg || []),
+                ).toThrow(execThrows);
+              } else {
+                const methodResult = callNestedMethod(
+                  result,
+                  method,
+                  execInArg || [],
+                );
+                if (execExpectedOut !== undefined) {
+                  // Handle special __undefined__ keyword
+                  if (execExpectedOut === "__undefined__") {
+                    expect(methodResult).toBe(undefined);
+                  } else {
+                    expect(methodResult).toEqual(execExpectedOut);
+                  }
+                }
+              }
+
+              // Run assertions
+              if (asserts) {
+                for (const assertion of asserts) {
+                  if (assertion.property) {
+                    const actualValue = getNestedProperty(
+                      result,
+                      assertion.property,
+                    );
+                    if (assertion.op === "eq") {
+                      // Handle special __undefined__ keyword
+                      if (assertion.value === "__undefined__") {
+                        expect(actualValue).toBe(undefined);
+                      } else {
+                        expect(actualValue).toEqual(assertion.value);
+                      }
+                    }
+                  } else if (assertion.method) {
+                    const assertResult = callNestedMethod(
+                      result,
+                      assertion.method,
+                      assertion.in || [],
+                    );
+                    // Handle special __undefined__ keyword
+                    if (assertion.out === "__undefined__") {
+                      expect(assertResult).toBe(undefined);
+                    } else {
+                      expect(assertResult).toEqual(assertion.out);
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
-        
+
         // Validate mock calls after test execution
         if (mockFunctions && Object.keys(mockFunctions).length > 0) {
           validateMockCalls(mockFunctions);
@@ -242,7 +335,9 @@ const setupFunctionTests = (suite) => {
       } finally {
         // Cleanup mocks after test
         if (mockFunctions) {
-          Object.values(mockFunctions).forEach(mock => mock.mockFunction.mockClear?.());
+          Object.values(mockFunctions).forEach((mock) =>
+            mock.mockFunction.mockClear?.(),
+          );
         }
       }
     });
@@ -253,7 +348,7 @@ const setupFunctionTests = (suite) => {
  * Sets up individual test cases for class-based testing
  * @param {Object} suite - Test suite configuration for class testing
  * @param {Object[]} suite.cases - Array of test case objects
- * @param {string} suite.cases[].name - Test case name  
+ * @param {string} suite.cases[].name - Test case name
  * @param {Object[]} suite.cases[].executions - Array of method executions to perform
  * @param {Function} suite.ClassUnderTest - The class constructor to test
  * @param {any[]} suite.constructorArgs - Arguments to pass to class constructor
@@ -281,11 +376,18 @@ const setupClassTests = (suite) => {
 
           // Execute the method and check its return value - supports nested methods
           if (throws) {
-            expect(() => callNestedMethod(instance, method, inArg || [])).toThrow(throws);
+            expect(() =>
+              callNestedMethod(instance, method, inArg || []),
+            ).toThrow(throws);
           } else {
             const result = callNestedMethod(instance, method, inArg || []);
             if (expectedOut !== undefined) {
-              expect(result).toEqual(expectedOut);
+              // Handle special __undefined__ keyword
+              if (expectedOut === "__undefined__") {
+                expect(result).toBe(undefined);
+              } else {
+                expect(result).toEqual(expectedOut);
+              }
             }
           }
 
@@ -294,20 +396,37 @@ const setupClassTests = (suite) => {
             for (const assertion of asserts) {
               if (assertion.property) {
                 // Property assertion - supports nested properties like "user.profile.name"
-                const actualValue = getNestedProperty(instance, assertion.property);
+                const actualValue = getNestedProperty(
+                  instance,
+                  assertion.property,
+                );
                 if (assertion.op === "eq") {
-                  expect(actualValue).toEqual(assertion.value);
+                  // Handle special __undefined__ keyword
+                  if (assertion.value === "__undefined__") {
+                    expect(actualValue).toBe(undefined);
+                  } else {
+                    expect(actualValue).toEqual(assertion.value);
+                  }
                 }
                 // Add more operators as needed
               } else if (assertion.method) {
                 // Method assertion - supports nested methods like "user.api.getData"
-                const result = callNestedMethod(instance, assertion.method, assertion.in || []);
-                expect(result).toEqual(assertion.out);
+                const result = callNestedMethod(
+                  instance,
+                  assertion.method,
+                  assertion.in || [],
+                );
+                // Handle special __undefined__ keyword
+                if (assertion.out === "__undefined__") {
+                  expect(result).toBe(undefined);
+                } else {
+                  expect(result).toEqual(assertion.out);
+                }
               }
             }
           }
         }
-        
+
         // Validate mock calls after test execution
         if (mockFunctions && Object.keys(mockFunctions).length > 0) {
           validateMockCalls(mockFunctions);
@@ -315,7 +434,9 @@ const setupClassTests = (suite) => {
       } finally {
         // Cleanup mocks after test
         if (mockFunctions) {
-          Object.values(mockFunctions).forEach(mock => mock.mockFunction.mockClear?.());
+          Object.values(mockFunctions).forEach((mock) =>
+            mock.mockFunction.mockClear?.(),
+          );
         }
       }
     });
@@ -331,8 +452,8 @@ const setupClassTests = (suite) => {
  * @example
  * // Import module and inject functions
  * const module = await import('./math.js');
- * const testConfig = { 
- *   suites: [{ name: 'add', exportName: 'add', cases: [...] }] 
+ * const testConfig = {
+ *   suites: [{ name: 'add', exportName: 'add', cases: [...] }]
  * };
  * const ready = injectFunctions(module, testConfig);
  * // ready.suites[0].cases[0].functionUnderTest === module.add
@@ -347,33 +468,45 @@ export const injectFunctions = (module, originalTestConfig) => {
       testCase.resolvedMocks = resolveMocks(
         testCase.mocks,
         suite.mocks,
-        testConfig.mocks
+        testConfig.mocks,
       );
-      
+
       // Create mock functions from resolved mock definitions
       testCase.mockFunctions = createMockFunctions(testCase.resolvedMocks);
-      
+
       // Process mock references in test inputs and outputs
       if (testCase.in) {
-        testCase.in = processMockReferences(testCase.in, testCase.mockFunctions);
+        testCase.in = processMockReferences(
+          testCase.in,
+          testCase.mockFunctions,
+        );
       }
       if (testCase.out) {
-        testCase.out = processMockReferences(testCase.out, testCase.mockFunctions);
+        testCase.out = processMockReferences(
+          testCase.out,
+          testCase.mockFunctions,
+        );
       }
-      
+
       // Process mock references in class test executions
       if (testCase.executions) {
         for (const execution of testCase.executions) {
           if (execution.in) {
-            execution.in = processMockReferences(execution.in, testCase.mockFunctions);
+            execution.in = processMockReferences(
+              execution.in,
+              testCase.mockFunctions,
+            );
           }
           if (execution.out) {
-            execution.out = processMockReferences(execution.out, testCase.mockFunctions);
+            execution.out = processMockReferences(
+              execution.out,
+              testCase.mockFunctions,
+            );
           }
         }
       }
     }
-    
+
     if (suite.mode === "class") {
       const exportName = suite.exportName || "default";
       const exported = module[exportName];
@@ -408,10 +541,10 @@ export const injectFunctions = (module, originalTestConfig) => {
  * @example
  * // Set up all test suites from YAML files in the current directory
  * await setupTestSuiteFromYaml('.');
- * 
+ *
  * // Set up tests from a specific directory
  * await setupTestSuiteFromYaml('./tests');
- * 
+ *
  * // This will find all files matching: *.test.yaml, *.test.yml, *.spec.yaml, *.spec.yml
  */
 export const setupTestSuiteFromYaml = async (dirname) => {
@@ -426,7 +559,10 @@ export const setupTestSuiteFromYaml = async (dirname) => {
 
       // testConfig.file is relative to the spec file
       const module = await import(filepathRelativeToSpecFile);
-      const testConfigWithInjectedFunctions = injectFunctions(module, testConfig);
+      const testConfigWithInjectedFunctions = injectFunctions(
+        module,
+        testConfig,
+      );
       setupTestSuite(testConfigWithInjectedFunctions);
     } catch (error) {
       throw error;

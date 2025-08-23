@@ -18,7 +18,7 @@ import yaml from "js-yaml";
  * @example
  * // Load a simple YAML file
  * const config = loadYamlWithPath('./config.yaml');
- * 
+ *
  * // Load YAML with includes
  * const data = loadYamlWithPath('./main.yaml'); // main.yaml contains: data: !include ./data.yaml
  */
@@ -80,7 +80,7 @@ export const loadYamlWithPath = (filePath, visitedFiles = new Set()) => {
  * @example
  * // Find all YAML test files
  * const testFiles = traverseAllFiles('./tests', ['.test.yaml', '.spec.yml']);
- * 
+ *
  * // Find all JavaScript files
  * const jsFiles = traverseAllFiles('./src', ['.js', '.ts']);
  */
@@ -189,9 +189,16 @@ const processDocuments = (docs) => {
         testCase.executions = doc.executions || [];
       } else {
         testCase.in = doc.in || [];
-        testCase.out = doc.out;
+        // Only add 'out' if it's present in the doc
+        if ("out" in doc) {
+          testCase.out = doc.out;
+        }
         if (doc.throws) {
           testCase.throws = doc.throws;
+        }
+        // Allow executions for function tests (factory pattern)
+        if (doc.executions) {
+          testCase.executions = doc.executions;
         }
       }
 
@@ -215,9 +222,9 @@ const processDocuments = (docs) => {
  * // Parse a test configuration file with includes
  * const config = parseWithIncludes('./tests/math.spec.yaml');
  * // Returns: { file: './math.js', group: 'math', suites: [...] }
- * 
+ *
  * // Works with files containing !include directives
- * // main.yaml: 
+ * // main.yaml:
  * // file: './lib.js'
  * // ---
  * // !include ./test-cases.yaml

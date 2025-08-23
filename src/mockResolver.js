@@ -41,12 +41,16 @@ const deepEqual = (a, b) => {
  * @param {Object} globalMocks - Global-level mock definitions
  * @returns {Object} Resolved mock definitions with hierarchy applied
  */
-export const resolveMocks = (caseMocks = {}, suiteMocks = {}, globalMocks = {}) => {
+export const resolveMocks = (
+  caseMocks = {},
+  suiteMocks = {},
+  globalMocks = {},
+) => {
   const resolved = {};
-  
+
   // Apply hierarchy: global -> suite -> case (case overrides suite, suite overrides global)
   Object.assign(resolved, globalMocks, suiteMocks, caseMocks);
-  
+
   return resolved;
 };
 
@@ -57,26 +61,26 @@ export const resolveMocks = (caseMocks = {}, suiteMocks = {}, globalMocks = {}) 
  * @returns {any} Processed value with $mock: references replaced
  */
 export const processMockReferences = (value, mockFunctions) => {
-  if (typeof value === 'string' && value.startsWith('$mock:')) {
+  if (typeof value === "string" && value.startsWith("$mock:")) {
     const mockName = value.substring(6); // Remove '$mock:' prefix
     if (!mockFunctions[mockName]) {
       throw new Error(`Mock '${mockName}' is referenced but not defined`);
     }
     return mockFunctions[mockName].mockFunction;
   }
-  
+
   if (Array.isArray(value)) {
-    return value.map(item => processMockReferences(item, mockFunctions));
+    return value.map((item) => processMockReferences(item, mockFunctions));
   }
-  
-  if (value && typeof value === 'object') {
+
+  if (value && typeof value === "object") {
     const processed = {};
     for (const [key, val] of Object.entries(value)) {
       processed[key] = processMockReferences(val, mockFunctions);
     }
     return processed;
   }
-  
+
   return value;
 };
 
@@ -88,40 +92,81 @@ export const processMockReferences = (value, mockFunctions) => {
  * @returns {Object} Mock function wrapper with validation methods
  */
 export const createMockFunction = (mockName, mockDefinition) => {
+  // Handle simple mock definition (fn: true)
+  if (mockDefinition.fn === true) {
+    const mockFn = vi.fn();
+    return {
+      mockFunction: mockFn,
+      expectedCalls: 0, // No specific call expectations
+      actualCalls: () => mockFn.mock.calls.length,
+      validate: () => {
+        // Simple mocks don't have call expectations
+      },
+      mockName,
+    };
+  }
+
   const { calls } = mockDefinition;
   let callIndex = 0;
-  
+
   const mockFn = vi.fn().mockImplementation((...args) => {
     if (callIndex >= calls.length) {
-      throw new Error(`Mock '${mockName}' was called ${callIndex + 1} time(s) but expected exactly ${calls.length} calls`);
+      throw new Error(
+        `Mock '${mockName}' was called ${callIndex + 1} time(s) but expected exactly ${calls.length} calls`,
+      );
     }
-    
+
     const expectedCall = calls[callIndex];
-    
+
+    // Process __undefined__ in expected inputs recursively
+    const processUndefined = (value) => {
+      if (value === "__undefined__") return undefined;
+      if (Array.isArray(value)) return value.map(processUndefined);
+      if (value && typeof value === "object") {
+        const processed = {};
+        for (const [key, val] of Object.entries(value)) {
+          processed[key] = processUndefined(val);
+        }
+        return processed;
+      }
+      return value;
+    };
+
+    const processedExpectedIn = processUndefined(expectedCall.in);
+
     // Validate input arguments
-    if (!deepEqual(args, expectedCall.in)) {
-      throw new Error(`Expected ${mockName}(${JSON.stringify(expectedCall.in)}) but got ${mockName}(${JSON.stringify(args)})`);
+    if (!deepEqual(args, processedExpectedIn)) {
+      throw new Error(
+        `Expected ${mockName}(${JSON.stringify(expectedCall.in)}) but got ${mockName}(${JSON.stringify(args)})`,
+      );
     }
-    
+
     callIndex++;
-    
+
     if (expectedCall.throws) {
       throw new Error(expectedCall.throws);
     }
-    
+
+    // Handle special __undefined__ keyword
+    if (expectedCall.out === "__undefined__") {
+      return undefined;
+    }
+
     return expectedCall.out;
   });
-  
+
   return {
     mockFunction: mockFn,
     expectedCalls: calls.length,
     actualCalls: () => callIndex,
     validate: () => {
       if (callIndex !== calls.length) {
-        throw new Error(`Mock '${mockName}' was called ${callIndex} time(s) but expected exactly ${calls.length} calls`);
+        throw new Error(
+          `Mock '${mockName}' was called ${callIndex} time(s) but expected exactly ${calls.length} calls`,
+        );
       }
     },
-    mockName
+    mockName,
   };
 };
 
@@ -143,10 +188,10 @@ export const validateMockCalls = (mockFunctions) => {
  */
 export const createMockFunctions = (resolvedMocks) => {
   const mockFunctions = {};
-  
+
   for (const [mockName, mockDef] of Object.entries(resolvedMocks)) {
     mockFunctions[mockName] = createMockFunction(mockName, mockDef);
   }
-  
+
   return mockFunctions;
 };

@@ -12,6 +12,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 - [Usage](#usage)
   - [Testing Functions](#testing-functions)
   - [Testing Classes](#testing-classes)
+  - [Testing Factory Functions](#testing-factory-functions)
   - [Error Testing](#error-testing)
   - [Using Mocks](#using-mocks)
   - [Using !include Directive](#using-include-directive)
@@ -112,10 +113,12 @@ out: 'A'
 Create `puty.test.js`:
 
 ```js
-import { setupTestSuiteFromYaml } from "puty";
+import path from 'path'
+import { setupTestSuiteFromYaml } from 'puty'
 
-// This will automatically find and run all *.test.yaml files
-await setupTestSuiteFromYaml();
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
+
+await setupTestSuiteFromYaml(__dirname);
 ```
 
 ### Step 6: Run Your Tests
@@ -259,6 +262,92 @@ executions:
   - `asserts` - Assertions to run after the method call
     - Property assertions: Check instance properties (supports nested: `user.profile.name`)
     - Method assertions: Call methods and check their return values (supports nested: `settings.getTheme`)
+
+### Testing Factory Functions
+
+Puty supports testing factory functions that return objects with methods. When using `executions` in a function test, you can omit the `out` field to skip asserting the factory's return value:
+
+```yaml
+file: './store.js'
+group: store
+---
+suite: createStore
+exportName: createStore
+---
+case: test store methods
+in:
+  - { count: 0 }
+# No 'out' field - skip return value assertion
+executions:
+  - method: getCount
+    in: []
+    out: 0
+  - method: dispatch
+    in: [{ type: 'INCREMENT' }]
+    out: 1
+  - method: getCount
+    in: []
+    out: 1
+```
+
+This pattern is useful for:
+- Factory functions that return objects with methods
+- Builder patterns
+- Module patterns that return APIs
+- Any function that returns an object you want to test methods on
+
+Key behaviors:
+- When `out` field is omitted: The function is called but its return value is not asserted
+- When `out:` is present (even empty): The return value is asserted (empty value in YAML equals `null`)
+- This works for any function test, with or without `executions`
+
+Examples:
+```yaml
+# No assertion on return value
+case: test without return assertion
+in: [1, 2]
+
+# Assert return value is null
+case: test null return
+in: [1, 2]
+out:
+
+# Assert return value is 42
+case: test specific return
+in: [1, 2]
+out: 42
+```
+
+#### Testing Undefined Values
+
+To assert that a function returns `undefined`, use the special keyword `__undefined__`:
+
+```yaml
+# Assert function returns undefined
+case: test undefined return
+in: []
+out: __undefined__
+
+# Also works in executions
+executions:
+  - method: doSomething
+    in: []
+    out: __undefined__
+    
+# And in mock definitions
+mocks:
+  callback:
+    calls:
+      - in: ['data']
+        out: __undefined__
+```
+
+The `__undefined__` keyword works in:
+- Function return value assertions (`out: __undefined__`)
+- Method return value assertions in executions
+- Mock return values
+- Mock input expectations
+- Property assertions (`value: __undefined__`)
 
 ### Error Testing
 

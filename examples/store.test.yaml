@@ -1,0 +1,101 @@
+file: './store.js'
+group: store
+---
+suite: createStore
+exportName: createStore
+---
+case: test store methods without asserting return value
+in:
+  - { count: 0 }
+# No 'out' field - skip return value assertion
+executions:
+  - method: getCount
+    in: []
+    out: 0
+  - method: dispatch
+    in: [{ type: 'INCREMENT' }]
+    out: 1
+  - method: getCount
+    in: []
+    out: 1
+  - method: dispatch
+    in: [{ type: 'INCREMENT', payload: 5 }]
+    out: 6
+  - method: getState
+    in: []
+    out: { count: 6 }
+---
+suite: createCounter
+exportName: createCounter
+---
+case: counter factory without return assertion
+in: [5]
+# No out - focus on testing methods
+executions:
+  - method: getValue
+    in: []
+    out: 5
+  - method: increment
+    in: []
+    out: 6
+  - method: increment
+    in: []
+    out: 7
+  - method: decrement
+    in: []
+    out: 6
+  - method: reset
+    in: []
+    out: 5
+  - method: getValue
+    in: []
+    out: 5
+---
+case: counter with throws
+in: [0]
+executions:
+  - method: decrement
+    in: []
+    out: -1
+  - method: getValue
+    in: []
+    out: -1
+---
+suite: returnsUndefined
+exportName: returnsUndefined
+---
+case: test without out field
+in: []
+# No out field - function is called but return value is not asserted
+---
+suite: sideEffectOnly
+exportName: sideEffectOnly
+mocks:
+  callback:
+    fn: true
+---
+case: test side effect without return assertion
+in:
+  - $mock:callback
+# No out field - only check that callback was called
+---
+case: test side effect with __undefined__ assertion
+in:
+  - $mock:callback
+out: __undefined__  # Explicitly assert function returns undefined
+---
+suite: createApiWithUndefined
+exportName: createApiWithUndefined
+---
+case: test methods returning undefined
+in: []
+executions:
+  - method: doSomething
+    in: []
+    out: __undefined__
+  - method: getValue
+    in: []
+    out: 42
+  - method: getNothing
+    in: []
+    out: __undefined__
