@@ -110,7 +110,7 @@ out: 'A'
 
 ### Step 5: Create Test Runner
 
-Create `puty.spec.js`:
+Create `puty.test.js`:
 
 ```js
 import path from 'path'
