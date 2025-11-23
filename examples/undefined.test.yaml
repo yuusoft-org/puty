@@ -1,4 +1,4 @@
-file: './undefined.js'
+file: "./undefined.js"
 group: undefined-tests
 ---
 suite: returnsUndefined
@@ -10,9 +10,9 @@ in: []
 ---
 case: assert undefined return value with __undefined__
 in: []
-out: __undefined__  # Assert the return value is undefined
+out: __undefined__ # Assert the return value is undefined
 ---
-suite: returnsNull  
+suite: returnsNull
 exportName: returnsNull
 ---
 case: without out field - no assertion
@@ -21,7 +21,7 @@ in: []
 ---
 case: with out null - assert return is null
 in: []
-out:  # Expects null and function returns null
+out: # Expects null and function returns null
 ---
 suite: returnsValue
 exportName: returnsValue
@@ -33,3 +33,29 @@ in: []
 case: with out 42 - assert return is 42
 in: []
 out: 42
+---
+suite: getNestedData
+exportName: getNestedData
+---
+case: test nested object with __undefined__ values
+in: []
+out:
+  prop1: "__undefined__"
+  prop2: "defined"
+  nested:
+    value1: "__undefined__"
+    value2: 42
+    deep:
+      undefinedValue: "__undefined__"
+---
+suite: getArrayWithUndefined
+exportName: getArrayWithUndefined
+---
+case: test array with nested __undefined__ values
+in: []
+out:
+  - 1
+  - "__undefined__"
+  - nested: "__undefined__"
+  - "defined"
+

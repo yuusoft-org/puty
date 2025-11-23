@@ -238,3 +238,25 @@ export const parseWithIncludes = (filePath) => {
 
   return processDocuments(flattenedDocs);
 };
+
+/**
+ * Recursively processes a value to convert "__undefined__" strings to actual undefined values
+ * @param {any} value - The value to process (string, array, object, or primitive)
+ * @returns {any} The processed value with "__undefined__" converted to undefined
+ * @example
+ * processUndefined("__undefined__") // returns undefined
+ * processUndefined({ a: "__undefined__", b: [1, "__undefined__"] }) 
+ * // returns { a: undefined, b: [1, undefined] }
+ */
+export const processUndefined = (value) => {
+  if (value === "__undefined__") return undefined;
+  if (Array.isArray(value)) return value.map(processUndefined);
+  if (value && typeof value === "object") {
+    const processed = {};
+    for (const [key, val] of Object.entries(value)) {
+      processed[key] = processUndefined(val);
+    }
+    return processed;
+  }
+  return value;
+};

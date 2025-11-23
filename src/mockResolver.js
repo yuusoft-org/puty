@@ -5,6 +5,7 @@
  */
 
 import { vi } from "vitest";
+import { processUndefined } from "./utils.js";
 
 /**
  * Deep equality check for mock argument validation
@@ -118,20 +119,6 @@ export const createMockFunction = (mockName, mockDefinition) => {
 
     const expectedCall = calls[callIndex];
 
-    // Process __undefined__ in expected inputs recursively
-    const processUndefined = (value) => {
-      if (value === "__undefined__") return undefined;
-      if (Array.isArray(value)) return value.map(processUndefined);
-      if (value && typeof value === "object") {
-        const processed = {};
-        for (const [key, val] of Object.entries(value)) {
-          processed[key] = processUndefined(val);
-        }
-        return processed;
-      }
-      return value;
-    };
-
     const processedExpectedIn = processUndefined(expectedCall.in);
 
     // Validate input arguments
@@ -147,12 +134,7 @@ export const createMockFunction = (mockName, mockDefinition) => {
       throw new Error(expectedCall.throws);
     }
 
-    // Handle special __undefined__ keyword
-    if (expectedCall.out === "__undefined__") {
-      return undefined;
-    }
-
-    return expectedCall.out;
+    return processUndefined(expectedCall.out);
   });
 
   return {

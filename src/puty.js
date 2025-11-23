@@ -8,7 +8,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { expect, test, describe } from "vitest";
 
-import { traverseAllFiles, parseWithIncludes } from "./utils.js";
+import { traverseAllFiles, parseWithIncludes, processUndefined } from "./utils.js";
 import {
   resolveMocks,
   processMockReferences,
@@ -254,12 +254,8 @@ const setupFunctionTests = (suite) => {
 
           // Assert return value if 'out' field is present in the test case
           if ("out" in testCase) {
-            // Handle special __undefined__ keyword
-            if (testCase.out === "__undefined__") {
-              expect(result).toBe(undefined);
-            } else {
-              expect(result).toEqual(testCase.out);
-            }
+            const expectedOut = processUndefined(testCase.out);
+            expect(result).toEqual(expectedOut);
           }
 
           // If executions are present, execute methods on the returned object
@@ -284,12 +280,8 @@ const setupFunctionTests = (suite) => {
                   execInArg || [],
                 );
                 if (execExpectedOut !== undefined) {
-                  // Handle special __undefined__ keyword
-                  if (execExpectedOut === "__undefined__") {
-                    expect(methodResult).toBe(undefined);
-                  } else {
-                    expect(methodResult).toEqual(execExpectedOut);
-                  }
+                  const processedExpectedOut = processUndefined(execExpectedOut);
+                  expect(methodResult).toEqual(processedExpectedOut);
                 }
               }
 
@@ -302,12 +294,8 @@ const setupFunctionTests = (suite) => {
                       assertion.property,
                     );
                     if (assertion.op === "eq") {
-                      // Handle special __undefined__ keyword
-                      if (assertion.value === "__undefined__") {
-                        expect(actualValue).toBe(undefined);
-                      } else {
-                        expect(actualValue).toEqual(assertion.value);
-                      }
+                      const processedValue = processUndefined(assertion.value);
+                      expect(actualValue).toEqual(processedValue);
                     }
                   } else if (assertion.method) {
                     const assertResult = callNestedMethod(
@@ -315,12 +303,8 @@ const setupFunctionTests = (suite) => {
                       assertion.method,
                       assertion.in || [],
                     );
-                    // Handle special __undefined__ keyword
-                    if (assertion.out === "__undefined__") {
-                      expect(assertResult).toBe(undefined);
-                    } else {
-                      expect(assertResult).toEqual(assertion.out);
-                    }
+                    const processedOut = processUndefined(assertion.out);
+                    expect(assertResult).toEqual(processedOut);
                   }
                 }
               }
@@ -382,12 +366,8 @@ const setupClassTests = (suite) => {
           } else {
             const result = callNestedMethod(instance, method, inArg || []);
             if (expectedOut !== undefined) {
-              // Handle special __undefined__ keyword
-              if (expectedOut === "__undefined__") {
-                expect(result).toBe(undefined);
-              } else {
-                expect(result).toEqual(expectedOut);
-              }
+              const processedExpectedOut = processUndefined(expectedOut);
+              expect(result).toEqual(processedExpectedOut);
             }
           }
 
@@ -401,12 +381,8 @@ const setupClassTests = (suite) => {
                   assertion.property,
                 );
                 if (assertion.op === "eq") {
-                  // Handle special __undefined__ keyword
-                  if (assertion.value === "__undefined__") {
-                    expect(actualValue).toBe(undefined);
-                  } else {
-                    expect(actualValue).toEqual(assertion.value);
-                  }
+                  const processedValue = processUndefined(assertion.value);
+                  expect(actualValue).toEqual(processedValue);
                 }
                 // Add more operators as needed
               } else if (assertion.method) {
@@ -416,12 +392,8 @@ const setupClassTests = (suite) => {
                   assertion.method,
                   assertion.in || [],
                 );
-                // Handle special __undefined__ keyword
-                if (assertion.out === "__undefined__") {
-                  expect(result).toBe(undefined);
-                } else {
-                  expect(result).toEqual(assertion.out);
-                }
+                const processedOut = processUndefined(assertion.out);
+                expect(result).toEqual(processedOut);
               }
             }
           }
