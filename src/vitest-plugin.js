@@ -27,7 +27,6 @@ export function putyPlugin() {
             "**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}",
             "**/*.{test,spec}.{yaml,yml}",
           ],
-          forceRerunTriggers: ["**/*.{test,spec}.{yaml,yml}"],
         },
       };
     },
