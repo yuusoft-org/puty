@@ -512,8 +512,9 @@ export const injectFunctions = (module, originalTestConfig) => {
 };
 
 /**
- * Discovers and sets up test suites from all YAML test files in a directory and its subdirectories
+ * Discovers and sets up test suites from YAML test files
  * @param {string} dirname - Directory path to search for YAML test files
+ * @param {string} [filename] - Optional specific filename to process (instead of scanning directory)
  * @returns {Promise<void>} Promise that resolves when all test suites are set up
  * @throws {Error} When YAML files cannot be parsed or modules cannot be imported
  * @example
@@ -523,10 +524,17 @@ export const injectFunctions = (module, originalTestConfig) => {
  * // Set up tests from a specific directory
  * await setupTestSuiteFromYaml('./tests');
  *
+ * // Set up a single YAML test file
+ * await setupTestSuiteFromYaml('./tests', 'math.test.yaml');
+ *
  * // This will find all files matching: *.test.yaml, *.test.yml, *.spec.yaml, *.spec.yml
  */
-export const setupTestSuiteFromYaml = async (dirname) => {
-  const testYamlFiles = traverseAllFiles(dirname, extensions);
+export const setupTestSuiteFromYaml = async (dirname, filename) => {
+  // If filename is provided, process only that file
+  const testYamlFiles = filename
+    ? [path.join(dirname, filename)]
+    : traverseAllFiles(dirname, extensions);
+
   for (const file of testYamlFiles) {
     // Skip already processed files to prevent duplicate test registration
     const absolutePath = path.resolve(file);
