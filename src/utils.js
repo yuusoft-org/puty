@@ -88,6 +88,10 @@ export const traverseAllFiles = (startPath, extensions) => {
   const results = [];
   const files = fs.readdirSync(startPath);
   for (const file of files) {
+    // Skip node_modules and hidden directories
+    if (file === "node_modules" || file.startsWith(".")) {
+      continue;
+    }
     const filePath = path.join(startPath, file);
     const stats = fs.statSync(filePath);
     if (stats.isDirectory()) {

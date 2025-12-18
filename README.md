@@ -21,6 +21,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 ## Features
 
 - 📝 Write tests in simple YAML format
+- 🔌 Zero-config Vitest plugin
 - 📦 Modular test organization with `!include` directive
 - 🎯 Clear separation of test data and test logic
 - 🧪 Mock support for testing functions with dependencies
@@ -44,17 +45,20 @@ Get up and running with Puty in just a few minutes!
 ### Step 1: Install Puty
 
 ```bash
-npm install puty
+npm install puty vitest
 ```
 
-### Step 2: Setup Your Project
+### Step 2: Configure Vitest
 
-Ensure your `package.json` has ES modules enabled:
+Create `vitest.config.js`:
 
-```json
-{
-  "type": "module"
-}
+```js
+import { defineConfig } from 'vitest/config'
+import { putyPlugin } from 'puty/vitest'
+
+export default defineConfig({
+  plugins: [putyPlugin()]
+})
 ```
 
 ### Step 3: Create a Function to Test
@@ -108,23 +112,22 @@ in: ['a']
 out: 'A'
 ```
 
-### Step 5: Create Test Runner
+### Step 5: Add Test Script
 
-Create `puty.test.js`:
+Add a test script to your `package.json`:
 
-```js
-import path from 'path'
-import { setupTestSuiteFromYaml } from 'puty'
-
-const __dirname = path.dirname(new URL(import.meta.url).pathname)
-
-await setupTestSuiteFromYaml(__dirname);
+```json
+{
+  "scripts": {
+    "test": "vitest run"
+  }
+}
 ```
 
 ### Step 6: Run Your Tests
 
 ```bash
-npx vitest
+npm test
 ```
 
 You should see output like:
@@ -137,26 +140,6 @@ You should see output like:
 ```
 
 🎉 **That's it!** You've just created declarative tests using YAML instead of JavaScript.
-
-### Recommended Vitest Configuration
-
-To enable automatic test reruns when YAML test files change, create a `vitest.config.js` file in your project root:
-
-```js
-import { defineConfig } from 'vitest/config'
-
-export default defineConfig({
-  test: {
-    forceRerunTriggers: [
-      '**/*.js',
-      '**/*.{test,spec}.yaml',
-      '**/*.{test,spec}.yml'
-    ],
-  },
-});
-```
-
-This configuration ensures that Vitest will re-run your tests whenever you modify either your JavaScript source files or your YAML test files.
 
 ## Usage
 

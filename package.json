@@ -1,9 +1,14 @@
 {
   "name": "puty",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "description": "A tooling function to test javascript functions and classes.",
   "main": "src/index.js",
   "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./vitest": "./src/vitest-plugin.js",
+    "./setup": "./src/setup.js"
+  },
   "files": [
     "src"
   ],
@@ -24,5 +29,8 @@
   },
   "devDependencies": {
     "vitest": "^3.2.1"
+  },
+  "peerDependencies": {
+    "vitest": ">=1.0.0"
   }
 }
