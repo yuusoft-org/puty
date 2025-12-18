@@ -112,10 +112,22 @@ in: ['a']
 out: 'A'
 ```
 
-### Step 5: Run Your Tests
+### Step 5: Add Test Script
+
+Add a test script to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "vitest run"
+  }
+}
+```
+
+### Step 6: Run Your Tests
 
 ```bash
-npx vitest
+npm test
 ```
 
 You should see output like:
