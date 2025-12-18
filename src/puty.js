@@ -93,6 +93,12 @@ const callNestedMethod = (obj, path, args = []) => {
 const extensions = [".test.yaml", ".test.yml", ".spec.yaml", ".spec.yml"];
 
 /**
+ * Registry of processed YAML test files to prevent duplicate registration
+ * @type {Set<string>}
+ */
+const processedFiles = new Set();
+
+/**
  * Parses YAML content containing multiple documents separated by '---' into a structured test configuration
  * @param {string} yamlContent - Raw YAML content string to parse
  * @returns {Object} Structured test configuration object
@@ -522,6 +528,13 @@ export const injectFunctions = (module, originalTestConfig) => {
 export const setupTestSuiteFromYaml = async (dirname) => {
   const testYamlFiles = traverseAllFiles(dirname, extensions);
   for (const file of testYamlFiles) {
+    // Skip already processed files to prevent duplicate test registration
+    const absolutePath = path.resolve(file);
+    if (processedFiles.has(absolutePath)) {
+      continue;
+    }
+    processedFiles.add(absolutePath);
+
     try {
       const testConfig = parseWithIncludes(file);
       const filepathRelativeToSpecFile = path.join(
