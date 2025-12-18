@@ -4,4 +4,8 @@
 
 import { setupTestSuiteFromYaml } from "./puty.js";
 
-await setupTestSuiteFromYaml(process.cwd());
+// Use globalThis to ensure setup only runs once across all imports
+if (!globalThis.__putySetupComplete) {
+  globalThis.__putySetupComplete = true;
+  await setupTestSuiteFromYaml(process.cwd());
+}
