@@ -11,6 +11,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 - [Quick Start](#quick-start)
 - [Usage](#usage)
   - [Testing Functions](#testing-functions)
+  - [Async Functions and Methods](#async-functions-and-methods)
   - [Testing Classes](#testing-classes)
   - [Testing Factory Functions](#testing-factory-functions)
   - [Error Testing](#error-testing)
@@ -25,6 +26,7 @@ Puty is ideal for testing pure functions - functions that always return the same
 - 📦 Modular test organization with `!include` directive
 - 🎯 Clear separation of test data and test logic
 - 🧪 Mock support for testing functions with dependencies
+- ⏳ Async support for functions, class methods, and factory method executions
 - ⚡ Powered by Vitest for fast test execution
 
 ## Installation
@@ -199,6 +201,32 @@ describe('math', () => {
 
 See the [YAML Structure](#yaml-structure) section for detailed documentation of all available fields.
 
+### Async Functions and Methods
+
+Puty supports async functions and async method executions using the same YAML fields:
+
+- `out` asserts the resolved return value
+- `throws` asserts either a thrown error or a rejected promise
+
+Example:
+
+```yaml
+file: './async.js'
+group: async
+---
+suite: fetchUser
+exportName: fetchUser
+---
+case: resolves user
+in: [1]
+out:
+  id: 1
+---
+case: rejects for missing user
+in: [999]
+throws: 'not found'
+```
+
 ### Testing Classes
 
 Puty also supports testing classes with method calls and state assertions:
@@ -334,7 +362,9 @@ The `__undefined__` keyword works in:
 
 ### Error Testing
 
-You can test that functions or methods throw expected errors:
+You can test that functions or methods fail with expected errors:
+- Sync functions/methods: thrown errors are supported
+- Async functions/methods: rejected promises are supported
 
 ```yaml
 case: divide by zero
@@ -510,8 +540,8 @@ For function tests:
 ```yaml
 case: 'test description'   # Required: Test case name
 in: [arg1, arg2]          # Required: Input arguments (use $mock:name for mocks)
-out: expectedValue        # Optional: Expected output (omit if testing for errors)
-throws: 'Error message'   # Optional: Expected error message
+out: expectedValue        # Optional: Expected output (resolved value for async functions)
+throws: 'Error message'   # Optional: Expected error message (sync throw or async rejection)
 mocks:                    # Optional: Case-specific mocks
   mockName:
     calls:                # Array of expected calls
@@ -526,8 +556,8 @@ case: 'test description'
 executions:
   - method: 'methodName'        # Supports nested: 'user.api.getData'
     in: [arg1]
-    out: expectedValue          # Optional
-    throws: 'Error msg'         # Optional
+    out: expectedValue          # Optional (resolved value for async methods)
+    throws: 'Error msg'         # Optional (sync throw or async rejection)
     asserts:
       - property: 'prop'        # Supports nested: 'user.profile.name'
         op: 'eq'                # Currently only 'eq' is supported
@@ -563,4 +593,3 @@ executions:
         in: ['/users/123']
         out: 'GET /users/123'
 ```
-
