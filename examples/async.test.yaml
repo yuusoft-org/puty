@@ -1,0 +1,99 @@
+file: './async.js'
+group: async-support
+---
+suite: asyncAdd
+exportName: asyncAdd
+---
+case: resolves async return value
+in:
+  - 1
+  - 2
+out: 3
+---
+suite: asyncNoReturn
+exportName: asyncNoReturn
+---
+case: supports async undefined return values
+in: []
+out: __undefined__
+---
+suite: asyncThrow
+exportName: asyncThrow
+---
+case: supports rejected promise with throws
+in: []
+throws: 'boom'
+---
+suite: syncThrow
+exportName: syncThrow
+---
+case: keeps sync throw behavior compatible
+in: []
+throws: 'sync boom'
+---
+suite: runWithCallback
+exportName: runWithCallback
+---
+case: validates mock calls from async function flow
+in:
+  - $mock:callback
+out:
+  ok: true
+mocks:
+  callback:
+    calls:
+      - in: ['done', 1]
+---
+suite: createAsyncCounter
+exportName: createAsyncCounter
+---
+case: supports async factory and async executions
+in:
+  - 5
+executions:
+  - method: getValue
+    in: []
+    out: 5
+  - method: increment
+    in:
+      - 2
+    out: 7
+  - method: getValue
+    in: []
+    out: 7
+  - method: failSync
+    in: []
+    throws: 'counter failed sync'
+  - method: fail
+    in: []
+    throws: 'counter failed'
+---
+suite: AsyncCounter
+mode: class
+exportName: AsyncCounter
+constructorArgs:
+  - 10
+---
+case: supports async class methods and assertions
+executions:
+  - method: increment
+    in:
+      - 3
+    out: 13
+    asserts:
+      - property: value
+        op: eq
+        value: 13
+      - method: getValue
+        in: []
+        out: 13
+      - method: increment
+        in:
+          - 2
+        out: 15
+  - method: failSync
+    in: []
+    throws: 'class failed sync'
+  - method: fail
+    in: []
+    throws: 'class failed'

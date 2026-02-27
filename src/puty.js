@@ -245,18 +245,20 @@ const setupFunctionTests = (suite) => {
       mockFunctions,
       executions,
     } = testCase;
-    test(name, () => {
+    test(name, async () => {
       if (!functionUnderTest) {
         throw new Error(`Function not found for test case: ${name}`);
       }
 
       try {
         if (throws) {
-          // Test expects an error to be thrown
-          expect(() => functionUnderTest(...(inArg || []))).toThrow(throws);
+          // Supports both sync throws and async rejections
+          await expect(
+            Promise.resolve().then(() => functionUnderTest(...(inArg || []))),
+          ).rejects.toThrow(throws);
         } else {
           // Call the function
-          const result = functionUnderTest(...(inArg || []));
+          const result = await functionUnderTest(...(inArg || []));
 
           // Assert return value if 'out' field is present in the test case
           if ("out" in testCase) {
@@ -276,11 +278,13 @@ const setupFunctionTests = (suite) => {
               } = execution;
 
               if (execThrows) {
-                expect(() =>
-                  callNestedMethod(result, method, execInArg || []),
-                ).toThrow(execThrows);
+                await expect(
+                  Promise.resolve().then(() =>
+                    callNestedMethod(result, method, execInArg || []),
+                  ),
+                ).rejects.toThrow(execThrows);
               } else {
-                const methodResult = callNestedMethod(
+                const methodResult = await callNestedMethod(
                   result,
                   method,
                   execInArg || [],
@@ -304,7 +308,7 @@ const setupFunctionTests = (suite) => {
                       expect(actualValue).toEqual(processedValue);
                     }
                   } else if (assertion.method) {
-                    const assertResult = callNestedMethod(
+                    const assertResult = await callNestedMethod(
                       result,
                       assertion.method,
                       assertion.in || [],
@@ -347,7 +351,7 @@ const setupClassTests = (suite) => {
   const { cases, ClassUnderTest, constructorArgs } = suite;
   for (const testCase of cases) {
     const { name, executions, mockFunctions } = testCase;
-    test(name, () => {
+    test(name, async () => {
       if (!ClassUnderTest) {
         throw new Error(`Class not found for test suite: ${suite.name}`);
       }
@@ -366,11 +370,13 @@ const setupClassTests = (suite) => {
 
           // Execute the method and check its return value - supports nested methods
           if (throws) {
-            expect(() =>
-              callNestedMethod(instance, method, inArg || []),
-            ).toThrow(throws);
+            await expect(
+              Promise.resolve().then(() =>
+                callNestedMethod(instance, method, inArg || []),
+              ),
+            ).rejects.toThrow(throws);
           } else {
-            const result = callNestedMethod(instance, method, inArg || []);
+            const result = await callNestedMethod(instance, method, inArg || []);
             if (expectedOut !== undefined) {
               const processedExpectedOut = processUndefined(expectedOut);
               expect(result).toEqual(processedExpectedOut);
@@ -393,7 +399,7 @@ const setupClassTests = (suite) => {
                 // Add more operators as needed
               } else if (assertion.method) {
                 // Method assertion - supports nested methods like "user.api.getData"
-                const result = callNestedMethod(
+                const result = await callNestedMethod(
                   instance,
                   assertion.method,
                   assertion.in || [],
